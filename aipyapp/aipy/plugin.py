@@ -48,6 +48,9 @@ class PluginManager:
 
     def load_plugins(self):
         """加载目录下的所有插件文件"""
+        if not os.path.exists(self.plugin_dir):
+            return
+
         for fname in os.listdir(self.plugin_dir):
             if fname.endswith(".py") and not fname.startswith("_"):
                 self._load_plugin(os.path.join(self.plugin_dir, fname))
