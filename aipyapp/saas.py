@@ -23,6 +23,7 @@ class CommandType(Enum):
     CMD_EXIT = auto()
     CMD_INVALID = auto()
     CMD_TEXT = auto()
+    CMD_LIST = auto()
 
 def parse_command(input_str, llms=set()):
     lower = input_str.lower()
@@ -31,6 +32,8 @@ def parse_command(input_str, llms=set()):
         return CommandType.CMD_DONE, None
     if lower in ("/exit", "exit"):
         return CommandType.CMD_EXIT, None
+    if lower in ("/list", "list"):
+        return CommandType.CMD_LIST, None
     if lower in llms:
         return CommandType.CMD_USE, input_str
     
@@ -52,7 +55,7 @@ class InteractiveConsole():
     def __init__(self, tm, console, settings):
         self.tm = tm
         self.names = tm.llm.names
-        completer = WordCompleter(['/use', 'use', '/done','done'] + list(self.names['enabled']), ignore_case=True)
+        completer = WordCompleter(['/use', 'use', '/done', 'done', '/list', 'list'] + list(self.names['enabled']), ignore_case=True)
         self.history = FileHistory(str(Path.cwd() / settings.history))
         self.session = PromptSession(history=self.history, completer=completer)
         self.console = console
@@ -127,6 +130,8 @@ class InteractiveConsole():
                 elif cmd == CommandType.CMD_USE:
                     ret = self.tm.llm.use(arg)
                     self.console.print('[green]Ok[/green]' if ret else '[red]Error[/red]')
+                elif cmd == CommandType.CMD_LIST:
+                    self.console.print(f"[cyan]{T('enabled')}: [yellow]{' '.join(self.names['enabled'])}")
                 elif cmd == CommandType.CMD_INVALID:
                     self.console.print('[red]Error[/red]')
                 elif cmd == CommandType.CMD_EXIT:
