@@ -37,8 +37,18 @@ def confirm(console, prompt, default="n", auto=None):
     return response == "y"
 
 def install_packages(console, packages):
-    console.print(f"[green]Install packages: {', '.join(packages)} with pip")
-    cp = subprocess.run([sys.executable, "-m", "pip", "install"] + packages)
+    console.print(f"[green]Install packages: {', '.join(packages)} with pip (using Aliyun mirror)")
+    pip_cmd = [
+        sys.executable, 
+        "-m", 
+        "pip", 
+        "install",
+        "-i", 
+        "https://mirrors.aliyun.com/pypi/simple/", 
+        "--trusted-host", 
+        "mirrors.aliyun.com"
+    ] + packages
+    cp = subprocess.run(pip_cmd)
     return cp.returncode == 0
 
 def confirm_disclaimer(console):
