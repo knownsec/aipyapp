@@ -32,7 +32,7 @@ def parse_command(input_str, llms=set()):
         return CommandType.CMD_DONE, None
     if lower in ("/exit", "exit"):
         return CommandType.CMD_EXIT, None
-    if lower in ("/list", "list"):
+    if lower in ("/list_llm", "list_llm"):
         return CommandType.CMD_LIST, None
     if lower in llms:
         return CommandType.CMD_USE, input_str
@@ -55,7 +55,7 @@ class InteractiveConsole():
     def __init__(self, tm, console, settings):
         self.tm = tm
         self.names = tm.llm.names
-        completer = WordCompleter(['/use', 'use', '/done', 'done', '/list', 'list'] + list(self.names['enabled']), ignore_case=True)
+        completer = WordCompleter(['/use', 'use', '/done', 'done', '/list_llm', 'list_llm'] + list(self.names['enabled']), ignore_case=True)
         self.history = FileHistory(str(Path.cwd() / settings.history))
         self.session = PromptSession(history=self.history, completer=completer)
         self.console = console
