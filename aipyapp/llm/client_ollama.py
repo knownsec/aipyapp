@@ -44,6 +44,11 @@ class OllamaClient(BaseClient):
     def __init__(self, config):
         super().__init__(config)
         self._session = requests.Session()
+        if self._proxy:
+            self._session.proxies = {
+                'http': self._proxy,
+                'https': self._proxy,
+            }
 
     def usable(self):
         return super().usable() and self._base_url

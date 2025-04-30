@@ -42,6 +42,7 @@ class BaseClient(ABC, Stoppable):
         self._timeout = config.get("timeout")
         self._api_key = config.get("api_key")
         self._base_url = config.get("base_url") or self.BASE_URL
+        self._proxy = config.get("proxy")
         self._stream = config.get("stream", True)
         self._client = None
         self._params = {}

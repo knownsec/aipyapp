@@ -44,6 +44,10 @@ class OpenAIBaseClient(BaseClient):
         return super().usable() and self._api_key
     
     def _get_client(self):
+        # https://github.com/openai/openai-python?tab=readme-ov-file#configuring-the-http-client
+        if self._proxy:
+            return openai.Client(api_key=self._api_key, base_url=self._base_url, timeout=self._timeout,
+                             http_client=openai.DefaultHttpxClient(proxy=self._proxy))
         return openai.Client(api_key=self._api_key, base_url=self._base_url, timeout=self._timeout)
     
     def get_completion(self, messages):

@@ -1,6 +1,6 @@
 #! /usr/bin/env python3
 # -*- coding: utf-8 -*-
-
+import anthropic
 from collections import Counter
 
 from .base import BaseClient, BaseResponse
@@ -47,7 +47,10 @@ class ClaudeClient(BaseClient):
         self._system_prompt = None
 
     def _get_client(self):
-        import anthropic
+        # https://github.com/anthropics/anthropic-sdk-python?tab=readme-ov-file#configuring-the-http-client
+        if self._proxy:
+            return anthropic.Anthropic(api_key=self._api_key, timeout=self._timeout,
+                                       http_client=anthropic.DefaultHttpxClient(proxy=self._proxy))
         return anthropic.Anthropic(api_key=self._api_key, timeout=self._timeout)
     
     def usable(self):
