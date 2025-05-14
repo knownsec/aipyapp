@@ -63,6 +63,20 @@ font_options = {
 }
 ```
 
+在使用 pandas 处理文件时，需要在代码中显式指定使用引擎名称，并使用`runtime.install_packages`方法安装引擎所对应依赖库。
+否则无法识别安装引擎所需要的可选依赖，导致出现`Missing optional dependency`错误。
+示例代码如下：
+```python
+import pandas as pd
+
+if runtime.install_packages('openpyxl'):
+    print("成功安装openpyxl依赖")
+else:
+    print("Error: 无法安装openpyxl依赖", file=sys.stderr)
+
+df = pd.read_excel("data.xlsx", engine="openpyxl")
+```
+
 ## 全局 `runtime` 对象
 `runtime` 对象提供一些协助代码完成任务的方法。
 
