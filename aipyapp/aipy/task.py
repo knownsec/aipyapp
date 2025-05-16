@@ -211,15 +211,19 @@ class Task:
         max_rounds = max_rounds or self.max_rounds
         if not max_rounds or max_rounds < 1:
             max_rounds = self.MAX_ROUNDS
-        response = self.llm(instruction, system_prompt=system_prompt, name=llm)
-        while response and rounds <= max_rounds:
+        while rounds <= max_rounds:
+            if rounds == 1:
+                response = self.llm(instruction, system_prompt=system_prompt, name=llm)
+            else:
+                response = self.process_code_reply(blocks, llm)
+            if not response:
+                break
+            if event_bus.is_stopped():
+                break
             blocks = self.parse_reply(response)
             if 'main' not in blocks:
                 break
             rounds += 1
-            response = self.process_code_reply(blocks, llm)
-            if event_bus.is_stopped():
-                break
         self.print_summary()
         os.write(1, b'\a\a\a')
 
