@@ -13,6 +13,7 @@ RUN apt-get update && apt-get install -y \
     libjson-c-dev \
     libwebsockets-dev \
     libssl-dev \
+    libgtk-3-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # 克隆 ttyd 源码并编译安装
