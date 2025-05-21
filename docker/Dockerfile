@@ -1,6 +1,7 @@
 FROM ghcr.io/astral-sh/uv:alpine
 
-RUN apk add --no-cache ttyd
+RUN apk update
+RUN apk add --no-cache ttyd build-base gtk+3.0-dev
 
 WORKDIR /app
 ENV UV_COMPILE_BYTECODE=1
