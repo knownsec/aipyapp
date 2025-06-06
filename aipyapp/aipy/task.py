@@ -26,7 +26,7 @@ from ..exec import Runner
 from .runtime import Runtime
 from .plugin import event_bus
 from .utils import get_safe_filename
-from .blocks import CodeBlocks
+from .blocks import CodeBlocks, CodeBlock
 from .interface import Stoppable
 
 CONSOLE_WHITE_HTML = read_text(__respkg__, "console_white.html")
@@ -188,7 +188,12 @@ class Task(Stoppable):
         result = self.mcp.call_tool(call_tool['name'], call_tool.get('arguments', {}))
         event_bus('result', result)
         result_json = json.dumps(result, ensure_ascii=False, indent=2, default=str)
-        self.print_code_result(block, result_json, title=T("MCP tool call result"))
+        code_block = CodeBlock(
+            id=call_tool.get('id', 'mcp_tool'),
+            code=json_content,
+            lang='json',
+        )
+        self.print_code_result(code_block, result_json, title=T("MCP tool call result"))
 
         self.console.print(f"{T('Start sending feedback')}...", style='dim white')
         feed_back = f"""# MCP 调用\n\n{self.instruction}\n
