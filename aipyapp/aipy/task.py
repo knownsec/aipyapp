@@ -55,10 +55,11 @@ class Task(Stoppable):
         self.start_time = None
         self.best_practice_content = None
 
-        
         self.code_blocks = CodeBlocks(self.console)
         self.runtime = Runtime(self)
         self.runner = Runner(self.runtime)
+        self.task_dir = None
+
     def get_best_practice(self):
         """获取任务最佳实践
         """
@@ -97,6 +98,7 @@ class Task(Stoppable):
 
     def save(self, path):
        if self.console.record:
+           os.makedirs(os.path.dirname(path), exist_ok=True)
            self.console.save_html(path, clear=False, code_format=CONSOLE_WHITE_HTML)
 
     def save_html(self, path, task):
@@ -107,6 +109,7 @@ class Task(Stoppable):
         task_json = json.dumps(task, ensure_ascii=False, default=str)
         html_content = CONSOLE_CODE_HTML.replace('{{code}}', task_json)
         try:
+            os.makedirs(os.path.dirname(path), exist_ok=True)
             with open(path, 'w', encoding='utf-8') as f:
                 f.write(html_content)
         except Exception as e:
@@ -120,28 +123,47 @@ class Task(Stoppable):
         task['runner'] = self.runner.history
         task['blocks'] = self.code_blocks.to_list()
 
-        filename = f"{self.task_id}.json"
+        if self.task_dir:
+            os.makedirs(self.task_dir, exist_ok=True)
+            filename = os.path.join(self.task_dir, f"{self.task_id}.json")
+        else:
+            filename = f"{self.task_id}.json"
         try:
             json.dump(task, open(filename, 'w', encoding='utf-8'), ensure_ascii=False, indent=4, default=str)
         except Exception as e:
             self.log.exception('Error saving task')
 
-        filename = f"{self.task_id}.html"
+        if self.task_dir:
+            filename = os.path.join(self.task_dir, f"{self.task_id}.html")
+        else:
+            filename = f"{self.task_id}.html"
         #self.save_html(filename, task)
         self.save(filename)
         self.log.info('Task auto saved')
 
     def done(self):
-        curname = f"{self.task_id}.json"
-        jsonname = get_safe_filename(self.instruction, extension='.json')
+        if self.task_dir:
+            curname = os.path.join(self.task_dir, f"{self.task_id}.json")
+            jsonname = get_safe_filename(self.instruction, extension='.json')
+            if jsonname:
+                jsonname = os.path.join(self.task_dir, jsonname)
+        else:
+            curname = f"{self.task_id}.json"
+            jsonname = get_safe_filename(self.instruction, extension='.json')
         if jsonname and os.path.exists(curname):
             try:
                 os.rename(curname, jsonname)
             except Exception as e:
                 self.log.exception('Error renaming task json file')
 
-        curname = f"{self.task_id}.html"
-        htmlname = get_safe_filename(self.instruction, extension='.html')
+        if self.task_dir:
+            curname = os.path.join(self.task_dir, f"{self.task_id}.html")
+            htmlname = get_safe_filename(self.instruction, extension='.html')
+            if htmlname:
+                htmlname = os.path.join(self.task_dir, htmlname)
+        else:
+            curname = f"{self.task_id}.html"
+            htmlname = get_safe_filename(self.instruction, extension='.html')
         if htmlname and os.path.exists(curname):
             try:
                 os.rename(curname, htmlname)
@@ -162,6 +184,13 @@ class Task(Stoppable):
         ret = self.code_blocks.parse(markdown, parse_mcp=parse_mcp)
         if not ret:
             return None
+        
+        # 新增：统一保存所有解析出的代码块到任务子目录
+        blocks = ret.get('blocks')
+        if blocks:
+            for block in blocks:
+                if hasattr(block, 'save'):
+                    block.save(self.task_dir)
         
         json_str = json.dumps(ret, ensure_ascii=False, indent=2, default=str)
         self.box(f"✅ {T('Message parse result')}", json_str, lang="json")
@@ -290,7 +319,7 @@ class Task(Stoppable):
         prompt['today'] = date.today().isoformat()
         prompt['locale'] = locale.getlocale()
         prompt['think_and_reply_language'] = '始终根据用户查询的语言来进行所有内部思考和回复，即用户使用什么语言，你就要用什么语言思考和回复。'
-        prompt['work_dir'] = '工作目录为当前目录，默认在当前目录下创建文件'
+        prompt['work_dir'] = f'当前工作目录为:({self.task_dir})，所有程序需要保存的文件都必须保存到此目录'
         if self.gui:
             prompt['matplotlib'] = "我现在用的是 matplotlib 的 Agg 后端，请默认用 plt.savefig() 保存图片后用 runtime.display() 显示，禁止使用 plt.show()"
             #prompt['wxPython'] = "你回复的Markdown 消息中，可以用 ![图片](图片路径) 的格式引用之前创建的图片，会显示在 wx.html2 的 WebView 中"
@@ -320,6 +349,11 @@ class Task(Stoppable):
         if not self.start_time:
             self.start_time = time.time()
             self.instruction = instruction
+            dir_name = get_safe_filename(self.instruction, extension='', max_length=16)
+            if not dir_name:
+                dir_name = self.task_id[:8]
+            self.task_dir = os.path.abspath(dir_name)
+            os.makedirs(self.task_dir, exist_ok=True)
             prompt = self.build_user_prompt()
             event_bus('task_start', prompt)
             instruction = json.dumps(prompt, ensure_ascii=False)

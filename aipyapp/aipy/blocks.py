@@ -20,12 +20,14 @@ class CodeBlock:
     code: str
     path: Optional[str] = None
 
-    def save(self):
-        """保存代码块到文件"""
+    def save(self, task_dir: Optional[str] = None):
+        """保存代码块到文件，可选传入任务目录前缀"""
         if not self.path:
             return False
-            
         path = Path(self.path)
+        # 如果是相对路径且有task_dir，则加上前缀
+        if not path.is_absolute() and task_dir:
+            path = Path(task_dir) / path
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(self.code, encoding='utf-8')
         return True
@@ -102,12 +104,6 @@ class CodeBlocks:
             
             blocks[code_id] = block
             self.log.info("Parsed code block", code_block=block)
-
-            try:
-                block.save()
-                self.log.info("Saved code block", code_block=block)
-            except Exception as e:
-                self.log.error("Failed to save file", code_block=block, reason=e)
 
         self.blocks.update(blocks)
 
