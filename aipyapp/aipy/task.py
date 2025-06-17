@@ -45,6 +45,7 @@ class Task(Stoppable):
         self.gui = manager.gui
         self.console = Console(file=manager.console.file, record=True)
         self.max_rounds = self.settings.get('max_rounds', self.MAX_ROUNDS)
+        self.best_practice = self.settings.get('best_practice', False)
 
         self.client = None
         self.runner = None
@@ -52,11 +53,43 @@ class Task(Stoppable):
         self.system_prompt = None
         self.diagnose = None
         self.start_time = None
+        self.best_practice_content = None
+
         
         self.code_blocks = CodeBlocks(self.console)
         self.runtime = Runtime(self)
         self.runner = Runner(self.runtime)
-        
+    def get_best_practice(self):
+        """获取任务最佳实践
+        """
+        trustoken_apikey = self.settings.get('llm', {}).get('Trustoken', {}).get('api_key')
+        if not trustoken_apikey:
+            trustoken_apikey = self.settings.get('llm', {}).get('trustoken', {}).get('api_key')
+        if not trustoken_apikey:
+            return False
+        api_key = trustoken_apikey
+        url = "https://api.trustoken.cn/v1/chat/completions"
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            'Content-Type': 'application/json',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36'
+        }
+        data = {
+            'chatId': 'AiPy',
+            'model': 'bestdo-test',            
+            'messages': [
+                {'role': 'user', 'content': f'{self.instruction}'}
+            ]
+        }
+        try:
+            response = requests.post(url, headers=headers, json=data, timeout=120)
+            response.raise_for_status()
+            return response.json()["choices"][0]["message"]["content"]
+        except Exception as e:
+            logger.error(f"获取最佳实践失败: {str(e)}")
+            return ""
+
+
     def use(self, name):
         ret = self.client.use(name)
         self.console.print('[green]Ok[/green]' if ret else '[red]Error[/red]')
@@ -175,7 +208,7 @@ class Task(Stoppable):
             json_results = json.dumps(results, ensure_ascii=False, indent=4, default=str)
         
         self.console.print(f"{T('Start sending feedback')}...", style='dim white')
-        feed_back = f"# 最初任务\n{self.instruction}\n\n# 代码执行结果反馈\n{json_results}"
+        feed_back = f"# 最初任务\n{self.instruction}\n\n# 代码执行结果反馈\n{json_results} \n\n# 最佳实践\n{self.best_practice_content}"
         return self.chat(feed_back)
 
     def process_mcp_reply(self, json_content):
@@ -249,6 +282,9 @@ class Task(Stoppable):
 
     def build_user_prompt(self):
         prompt = {'task': self.instruction}
+        if self.best_practice:
+            self.best_practice_content = self.get_best_practice()
+            prompt['base_practices'] = self.best_practice_content
         prompt['python_version'] = platform.python_version()
         prompt['platform'] = platform.platform()
         prompt['today'] = date.today().isoformat()
