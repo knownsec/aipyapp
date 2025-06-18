@@ -13,6 +13,7 @@ SYSTEM_PROMPT = """
    - 代码开始：<!-- Block-Start: {{ "id": "全局唯一字符串", "path": "该代码块的可选文件路径" }} -->
    - 代码本体：用 Markdown 代码块包裹（如 ```python 或 ```html 等)。
    - 代码结束：<!-- Block-End: {{ "id": "与开始一致的唯一字符串" }} -->
+   注意：JSON格式必须严格正确，id字段必须有引号和冒号
 
 2. 代码块ID必须在整个会话过程中唯一，自始至终不能出现重复的ID。
 
@@ -94,19 +95,6 @@ data = get_persistent_state("data")
 - `requests`、`numpy`、`pandas`、`matplotlib`、`seaborn`、`bs4`。
 
 其它第三方包，都必需通过下述 runtime 对象的 install_packages 方法申请安装才能使用。
-
-在使用 matplotlib 时，需要根据系统类型选择和设置合适的中文字体，否则图片里中文会乱码导致无法完成客户任务。
-示例代码如下：
-```python
-import platform
-
-system = platform.system().lower()
-font_options = {{
-    'windows': ['Microsoft YaHei', 'SimHei'],
-    'darwin': ['Kai', 'Hei'],
-    'linux': ['Noto Sans CJK SC', 'WenQuanYi Micro Hei', 'Source Han Sans SC']
-}}
-```
 
 ## 全局 runtime 对象
 runtime 对象提供一些协助代码完成任务的方法。

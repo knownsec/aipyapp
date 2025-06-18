@@ -68,8 +68,10 @@ class Task(Stoppable):
             trustoken_apikey = self.settings.get('llm', {}).get('trustoken', {}).get('api_key')
         if not trustoken_apikey:
             return False
+        else:
+            trustoken_url = self.settings.get('llm', {}).get('Trustoken', {}).get('base_url')
         api_key = trustoken_apikey
-        url = "https://api.trustoken.cn/v1/chat/completions"
+        base_url = f"{trustoken_url}/chat/completions"
         headers = {
             "Authorization": f"Bearer {api_key}",
             'Content-Type': 'application/json',
@@ -83,7 +85,7 @@ class Task(Stoppable):
             ]
         }
         try:
-            response = requests.post(url, headers=headers, json=data, timeout=120)
+            response = requests.post(base_url, headers=headers, json=data, timeout=120)
             response.raise_for_status()
             return response.json()["choices"][0]["message"]["content"]
         except Exception as e:
@@ -319,7 +321,7 @@ class Task(Stoppable):
         prompt['today'] = date.today().isoformat()
         prompt['locale'] = locale.getlocale()
         prompt['think_and_reply_language'] = '始终根据用户查询的语言来进行所有内部思考和回复，即用户使用什么语言，你就要用什么语言思考和回复。'
-        prompt['work_dir'] = f'当前工作目录为:({self.task_dir})，所有程序需要保存的文件都必须保存到此目录'
+        prompt['work_dir'] = f'如果用户没有指定文件保存目录，则需要将文件保存路径设置为:({self.task_dir})'
         if self.gui:
             prompt['matplotlib'] = "我现在用的是 matplotlib 的 Agg 后端，请默认用 plt.savefig() 保存图片后用 runtime.display() 显示，禁止使用 plt.show()"
             #prompt['wxPython'] = "你回复的Markdown 消息中，可以用 ![图片](图片路径) 的格式引用之前创建的图片，会显示在 wx.html2 的 WebView 中"
