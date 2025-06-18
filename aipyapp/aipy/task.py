@@ -45,6 +45,7 @@ class Task(Stoppable):
         self.gui = manager.gui
         self.console = Console(file=manager.console.file, record=True)
         self.max_rounds = self.settings.get('max_rounds', self.MAX_ROUNDS)
+        self.best_practice = self.settings.get('best_practice', False)
 
         self.client = None
         self.runner = None
@@ -52,11 +53,46 @@ class Task(Stoppable):
         self.system_prompt = None
         self.diagnose = None
         self.start_time = None
-        
+        self.best_practice_content = None
+
         self.code_blocks = CodeBlocks(self.console)
         self.runtime = Runtime(self)
         self.runner = Runner(self.runtime)
-        
+        self.task_dir = None
+
+    def get_best_practice(self):
+        """获取任务最佳实践
+        """
+        trustoken_apikey = self.settings.get('llm', {}).get('Trustoken', {}).get('api_key')
+        if not trustoken_apikey:
+            trustoken_apikey = self.settings.get('llm', {}).get('trustoken', {}).get('api_key')
+        if not trustoken_apikey:
+            return False
+        else:
+            trustoken_url = self.settings.get('llm', {}).get('Trustoken', {}).get('base_url')
+        api_key = trustoken_apikey
+        base_url = f"{trustoken_url}/chat/completions"
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            'Content-Type': 'application/json',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36'
+        }
+        data = {
+            'chatId': 'AiPy',
+            'model': 'bestdo-test',            
+            'messages': [
+                {'role': 'user', 'content': f'{self.instruction}'}
+            ]
+        }
+        try:
+            response = requests.post(base_url, headers=headers, json=data, timeout=120)
+            response.raise_for_status()
+            return response.json()["choices"][0]["message"]["content"]
+        except Exception as e:
+            logger.error(f"获取最佳实践失败: {str(e)}")
+            return ""
+
+
     def use(self, name):
         ret = self.client.use(name)
         self.console.print('[green]Ok[/green]' if ret else '[red]Error[/red]')
@@ -64,6 +100,7 @@ class Task(Stoppable):
 
     def save(self, path):
        if self.console.record:
+           os.makedirs(os.path.dirname(path), exist_ok=True)
            self.console.save_html(path, clear=False, code_format=CONSOLE_WHITE_HTML)
 
     def save_html(self, path, task):
@@ -74,6 +111,7 @@ class Task(Stoppable):
         task_json = json.dumps(task, ensure_ascii=False, default=str)
         html_content = CONSOLE_CODE_HTML.replace('{{code}}', task_json)
         try:
+            os.makedirs(os.path.dirname(path), exist_ok=True)
             with open(path, 'w', encoding='utf-8') as f:
                 f.write(html_content)
         except Exception as e:
@@ -87,28 +125,47 @@ class Task(Stoppable):
         task['runner'] = self.runner.history
         task['blocks'] = self.code_blocks.to_list()
 
-        filename = f"{self.task_id}.json"
+        if self.task_dir:
+            os.makedirs(self.task_dir, exist_ok=True)
+            filename = os.path.join(self.task_dir, f"{self.task_id}.json")
+        else:
+            filename = f"{self.task_id}.json"
         try:
             json.dump(task, open(filename, 'w', encoding='utf-8'), ensure_ascii=False, indent=4, default=str)
         except Exception as e:
             self.log.exception('Error saving task')
 
-        filename = f"{self.task_id}.html"
+        if self.task_dir:
+            filename = os.path.join(self.task_dir, f"{self.task_id}.html")
+        else:
+            filename = f"{self.task_id}.html"
         #self.save_html(filename, task)
         self.save(filename)
         self.log.info('Task auto saved')
 
     def done(self):
-        curname = f"{self.task_id}.json"
-        jsonname = get_safe_filename(self.instruction, extension='.json')
+        if self.task_dir:
+            curname = os.path.join(self.task_dir, f"{self.task_id}.json")
+            jsonname = get_safe_filename(self.instruction, extension='.json')
+            if jsonname:
+                jsonname = os.path.join(self.task_dir, jsonname)
+        else:
+            curname = f"{self.task_id}.json"
+            jsonname = get_safe_filename(self.instruction, extension='.json')
         if jsonname and os.path.exists(curname):
             try:
                 os.rename(curname, jsonname)
             except Exception as e:
                 self.log.exception('Error renaming task json file')
 
-        curname = f"{self.task_id}.html"
-        htmlname = get_safe_filename(self.instruction, extension='.html')
+        if self.task_dir:
+            curname = os.path.join(self.task_dir, f"{self.task_id}.html")
+            htmlname = get_safe_filename(self.instruction, extension='.html')
+            if htmlname:
+                htmlname = os.path.join(self.task_dir, htmlname)
+        else:
+            curname = f"{self.task_id}.html"
+            htmlname = get_safe_filename(self.instruction, extension='.html')
         if htmlname and os.path.exists(curname):
             try:
                 os.rename(curname, htmlname)
@@ -129,6 +186,13 @@ class Task(Stoppable):
         ret = self.code_blocks.parse(markdown, parse_mcp=parse_mcp)
         if not ret:
             return None
+        
+        # 新增：统一保存所有解析出的代码块到任务子目录
+        blocks = ret.get('blocks')
+        if blocks:
+            for block in blocks:
+                if hasattr(block, 'save'):
+                    block.save(self.task_dir)
         
         json_str = json.dumps(ret, ensure_ascii=False, indent=2, default=str)
         self.box(f"✅ {T('Message parse result')}", json_str, lang="json")
@@ -175,7 +239,7 @@ class Task(Stoppable):
             json_results = json.dumps(results, ensure_ascii=False, indent=4, default=str)
         
         self.console.print(f"{T('Start sending feedback')}...", style='dim white')
-        feed_back = f"# 最初任务\n{self.instruction}\n\n# 代码执行结果反馈\n{json_results}"
+        feed_back = f"# 最初任务\n{self.instruction}\n\n# 代码执行结果反馈\n{json_results} \n\n# 最佳实践\n{self.best_practice_content}"
         return self.chat(feed_back)
 
     def process_mcp_reply(self, json_content):
@@ -249,12 +313,15 @@ class Task(Stoppable):
 
     def build_user_prompt(self):
         prompt = {'task': self.instruction}
+        if self.best_practice:
+            self.best_practice_content = self.get_best_practice()
+            prompt['base_practices'] = self.best_practice_content
         prompt['python_version'] = platform.python_version()
         prompt['platform'] = platform.platform()
         prompt['today'] = date.today().isoformat()
         prompt['locale'] = locale.getlocale()
         prompt['think_and_reply_language'] = '始终根据用户查询的语言来进行所有内部思考和回复，即用户使用什么语言，你就要用什么语言思考和回复。'
-        prompt['work_dir'] = '工作目录为当前目录，默认在当前目录下创建文件'
+        prompt['work_dir'] = f'如果用户没有指定文件保存目录，则需要将文件保存路径设置为:({self.task_dir})'
         if self.gui:
             prompt['matplotlib'] = "我现在用的是 matplotlib 的 Agg 后端，请默认用 plt.savefig() 保存图片后用 runtime.display() 显示，禁止使用 plt.show()"
             #prompt['wxPython'] = "你回复的Markdown 消息中，可以用 ![图片](图片路径) 的格式引用之前创建的图片，会显示在 wx.html2 的 WebView 中"
@@ -284,6 +351,11 @@ class Task(Stoppable):
         if not self.start_time:
             self.start_time = time.time()
             self.instruction = instruction
+            dir_name = get_safe_filename(self.instruction, extension='', max_length=16)
+            if not dir_name:
+                dir_name = self.task_id[:8]
+            self.task_dir = os.path.abspath(dir_name)
+            os.makedirs(self.task_dir, exist_ok=True)
             prompt = self.build_user_prompt()
             event_bus('task_start', prompt)
             instruction = json.dumps(prompt, ensure_ascii=False)
