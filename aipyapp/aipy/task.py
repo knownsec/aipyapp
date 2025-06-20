@@ -59,6 +59,7 @@ class Task(Stoppable):
         self.runtime = Runtime(self)
         self.runner = Runner(self.runtime)
         self.task_dir = None
+        self.original_cwd = None  # 保存原始工作目录
 
     def get_best_practice(self):
         """获取任务最佳实践
@@ -100,7 +101,9 @@ class Task(Stoppable):
 
     def save(self, path):
        if self.console.record:
-           os.makedirs(os.path.dirname(path), exist_ok=True)
+           dirname = os.path.dirname(path)
+           if dirname:
+               os.makedirs(dirname, exist_ok=True)
            self.console.save_html(path, clear=False, code_format=CONSOLE_WHITE_HTML)
 
     def save_html(self, path, task):
@@ -111,7 +114,9 @@ class Task(Stoppable):
         task_json = json.dumps(task, ensure_ascii=False, default=str)
         html_content = CONSOLE_CODE_HTML.replace('{{code}}', task_json)
         try:
-            os.makedirs(os.path.dirname(path), exist_ok=True)
+            dirname = os.path.dirname(path)
+            if dirname:
+                os.makedirs(dirname, exist_ok=True)
             with open(path, 'w', encoding='utf-8') as f:
                 f.write(html_content)
         except Exception as e:
@@ -125,47 +130,30 @@ class Task(Stoppable):
         task['runner'] = self.runner.history
         task['blocks'] = self.code_blocks.to_list()
 
-        if self.task_dir:
-            os.makedirs(self.task_dir, exist_ok=True)
-            filename = os.path.join(self.task_dir, f"{self.task_id}.json")
-        else:
-            filename = f"{self.task_id}.json"
+        # 由于已经在任务目录中，直接使用文件名
+        filename = f"{self.task_id}.json"
         try:
             json.dump(task, open(filename, 'w', encoding='utf-8'), ensure_ascii=False, indent=4, default=str)
         except Exception as e:
             self.log.exception('Error saving task')
 
-        if self.task_dir:
-            filename = os.path.join(self.task_dir, f"{self.task_id}.html")
-        else:
-            filename = f"{self.task_id}.html"
+        filename = f"{self.task_id}.html"
         #self.save_html(filename, task)
         self.save(filename)
         self.log.info('Task auto saved')
 
     def done(self):
-        if self.task_dir:
-            curname = os.path.join(self.task_dir, f"{self.task_id}.json")
-            jsonname = get_safe_filename(self.instruction, extension='.json')
-            if jsonname:
-                jsonname = os.path.join(self.task_dir, jsonname)
-        else:
-            curname = f"{self.task_id}.json"
-            jsonname = get_safe_filename(self.instruction, extension='.json')
+        # 由于已经在任务目录中，直接使用文件名
+        curname = f"{self.task_id}.json"
+        jsonname = get_safe_filename(self.instruction, extension='.json')
         if jsonname and os.path.exists(curname):
             try:
                 os.rename(curname, jsonname)
             except Exception as e:
                 self.log.exception('Error renaming task json file')
 
-        if self.task_dir:
-            curname = os.path.join(self.task_dir, f"{self.task_id}.html")
-            htmlname = get_safe_filename(self.instruction, extension='.html')
-            if htmlname:
-                htmlname = os.path.join(self.task_dir, htmlname)
-        else:
-            curname = f"{self.task_id}.html"
-            htmlname = get_safe_filename(self.instruction, extension='.html')
+        curname = f"{self.task_id}.html"
+        htmlname = get_safe_filename(self.instruction, extension='.html')
         if htmlname and os.path.exists(curname):
             try:
                 os.rename(curname, htmlname)
@@ -180,6 +168,10 @@ class Task(Stoppable):
         if self.settings.get('share_result'):
             self.sync_to_cloud()
         
+        # 恢复原始工作目录
+        if self.original_cwd:
+            os.chdir(self.original_cwd)
+
     def process_reply(self, markdown):
         #self.console.print(f"{T('Start parsing message')}...", style='dim white')
         parse_mcp = self.mcp is not None
@@ -187,12 +179,12 @@ class Task(Stoppable):
         if not ret:
             return None
         
-        # 新增：统一保存所有解析出的代码块到任务子目录
+        # 由于已经在任务目录中，代码块不需要传递task_dir参数
         blocks = ret.get('blocks')
         if blocks:
             for block in blocks:
                 if hasattr(block, 'save'):
-                    block.save(self.task_dir)
+                    block.save()
         
         json_str = json.dumps(ret, ensure_ascii=False, indent=2, default=str)
         self.box(f"✅ {T('Message parse result')}", json_str, lang="json")
@@ -321,7 +313,7 @@ class Task(Stoppable):
         prompt['today'] = date.today().isoformat()
         prompt['locale'] = locale.getlocale()
         prompt['think_and_reply_language'] = '始终根据用户查询的语言来进行所有内部思考和回复，即用户使用什么语言，你就要用什么语言思考和回复。'
-        prompt['work_dir'] = f'如果用户没有指定文件保存目录，则需要将文件保存路径设置为:({self.task_dir})'
+        prompt['work_dir'] = '工作目录为当前目录，默认在当前目录下创建文件'
         if self.gui:
             prompt['matplotlib'] = "我现在用的是 matplotlib 的 Agg 后端，请默认用 plt.savefig() 保存图片后用 runtime.display() 显示，禁止使用 plt.show()"
             #prompt['wxPython'] = "你回复的Markdown 消息中，可以用 ![图片](图片路径) 的格式引用之前创建的图片，会显示在 wx.html2 的 WebView 中"
@@ -351,11 +343,17 @@ class Task(Stoppable):
         if not self.start_time:
             self.start_time = time.time()
             self.instruction = instruction
+            # 创建任务子目录
             dir_name = get_safe_filename(self.instruction, extension='', max_length=16)
             if not dir_name:
                 dir_name = self.task_id[:8]
             self.task_dir = os.path.abspath(dir_name)
             os.makedirs(self.task_dir, exist_ok=True)
+            
+            # 切换到任务子目录作为工作目录
+            self.original_cwd = os.getcwd()
+            os.chdir(self.task_dir)
+            
             prompt = self.build_user_prompt()
             event_bus('task_start', prompt)
             instruction = json.dumps(prompt, ensure_ascii=False)
@@ -365,18 +363,24 @@ class Task(Stoppable):
 
         rounds = 1
         max_rounds = self.max_rounds
-        response = self.chat(instruction, system_prompt=system_prompt)
-        while response and rounds <= max_rounds:
-            response = self.process_reply(response)
-            rounds += 1
-            if self.is_stopped():
-                self.log.info('Task stopped')
-                break
+        try:
+            response = self.chat(instruction, system_prompt=system_prompt)
+            while response and rounds <= max_rounds:
+                response = self.process_reply(response)
+                rounds += 1
+                if self.is_stopped():
+                    self.log.info('Task stopped')
+                    break
 
-        self.print_summary()
-        self._auto_save()
-        self.console.bell()
-        self.log.info('Loop done', rounds=rounds)
+            self.print_summary()
+            self._auto_save()
+            self.console.bell()
+            self.log.info('Loop done', rounds=rounds)
+        except Exception as e:
+            # 确保异常时也能恢复工作目录
+            if self.original_cwd:
+                os.chdir(self.original_cwd)
+            raise
 
     def sync_to_cloud(self, verbose=True):
         """ Sync result
@@ -389,14 +393,41 @@ class Task(Stoppable):
         if not trustoken_apikey:
             return False
         self.console.print(f"[yellow]{T('Uploading result, please wait...')}")
+        
+        def clean_nan_values(obj):
+            """递归清理NaN值和不可序列化的对象，将其转换为可序列化的格式"""
+            import math
+            import datetime
+            
+            if isinstance(obj, dict):
+                return {k: clean_nan_values(v) for k, v in obj.items()}
+            elif isinstance(obj, list):
+                return [clean_nan_values(item) for item in obj]
+            elif isinstance(obj, float) and (math.isnan(obj) or math.isinf(obj)):
+                return None  # 将NaN和Infinity转换为None
+            elif hasattr(obj, 'isoformat'):  # pandas Timestamp, datetime对象
+                return obj.isoformat()
+            elif hasattr(obj, 'item'):  # numpy数据类型
+                return clean_nan_values(obj.item())
+            elif hasattr(obj, 'tolist'):  # numpy数组
+                return clean_nan_values(obj.tolist())
+            elif str(type(obj)).startswith('<class \'pandas.'):  # pandas对象
+                return str(obj)
+            elif str(type(obj)).startswith('<class \'numpy.'):  # numpy对象
+                return str(obj)
+            else:
+                return obj
+        
         try:
-            response = requests.post(url, json={
+            # 清理数据中的NaN值
+            upload_data = {
                 'apikey': trustoken_apikey,
                 'author': os.getlogin(),
                 'instruction': self.instruction,
-                'llm': self.client.history.json(),
-                'runner': self.runner.history,
-            }, verify=True, timeout=30)
+                'llm': clean_nan_values(self.client.history.json()),
+                'runner': clean_nan_values(self.runner.history),
+            }
+            response = requests.post(url, json=upload_data, verify=True, timeout=30)
         except Exception as e:
             print(e)
             return False

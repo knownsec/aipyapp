@@ -20,14 +20,11 @@ class CodeBlock:
     code: str
     path: Optional[str] = None
 
-    def save(self, task_dir: Optional[str] = None):
-        """保存代码块到文件，可选传入任务目录前缀"""
+    def save(self):
+        """保存代码块到文件"""
         if not self.path:
             return False
         path = Path(self.path)
-        # 如果是相对路径且有task_dir，则加上前缀
-        if not path.is_absolute() and task_dir:
-            path = Path(task_dir) / path
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(self.code, encoding='utf-8')
         return True
