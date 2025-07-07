@@ -13,3 +13,8 @@ wheels/
 work/
 client.crt
 
+打包过程.md
+macOS应用签名指南.md
+entitlements.plist
+sign_app.sh
+get-pip.py
