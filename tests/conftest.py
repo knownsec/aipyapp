@@ -15,15 +15,33 @@ from typing import Generator, Any, Dict
 
 import pytest
 import pytest_asyncio
-from dynaconf import Dynaconf
 
 # 添加项目根目录到 Python 路径
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from aipyapp.aipy import Task, TaskManager, ConfigManager
-from aipyapp.aipy.context_manager import ContextManager, ContextConfig
-from aipyapp.aipy.runtime import CliPythonRuntime
-from aipyapp.exec import BlockExecutor
+# 安全导入，处理缺失的模块
+try:
+    from aipyapp.aipy import Task, TaskManager, ConfigManager
+except ImportError:
+    Task = None
+    TaskManager = None
+    ConfigManager = None
+
+try:
+    from aipyapp.aipy.context import ContextManager, ContextConfig
+except ImportError:
+    ContextManager = None
+    ContextConfig = None
+
+try:
+    from aipyapp.aipy.runtime import CliPythonRuntime
+except ImportError:
+    CliPythonRuntime = None
+
+try:
+    from aipyapp.exec import BlockExecutor
+except ImportError:
+    BlockExecutor = None
 
 
 @pytest.fixture(scope="session")

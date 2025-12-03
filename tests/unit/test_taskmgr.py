@@ -10,7 +10,7 @@ from pathlib import Path
 from unittest.mock import Mock, MagicMock, patch, PropertyMock
 from collections import deque
 
-from aipyapp.aipy.taskmgr import TaskManager, TaskContext
+from aipyapp.aipy.taskmgr import TaskManager
 from aipyapp.aipy.task import Task
 
 

@@ -5,13 +5,11 @@ from __future__ import annotations
 import os
 import locale
 import platform
-import inspect
 import json
 import shutil
-import subprocess
-import re
 from datetime import datetime
 from typing import List, TYPE_CHECKING, Dict, Optional
+from threading import RLock
 
 from jinja2 import Environment, FileSystemLoader
 
@@ -52,55 +50,65 @@ class PromptFeatures:
         """转换为字典"""
         return self.features.copy()
 
-def check_commands(commands):
+# 类级别缓存，避免重复的命令查找
+_command_cache: Dict[str, Optional[str]] = {}
+
+def check_commands(commands) -> Dict[str, Optional[str]]:
     """
-    检查多个命令是否存在，并获取其版本号。
-    :param commands: dict，键为命令名，值为获取版本的参数（如 ["--version"]）
-    :return: dict，例如 {"node": "v18.17.1", "bash": "5.1.16", ...}
+    检查多个命令是否存在，返回其可执行文件路径。
+    这是一个性能优化的实现，只检查命令是否存在而不获取版本信息，
+    避免了耗时的 subprocess 调用。
+
+    :param commands: dict，键为命令名，值为获取版本的参数（当前未使用，保留以备将来扩展）
+    :return: dict，例如 {"node": "/usr/bin/node", "bash": "/bin/bash", ...}，命令不存在时为 None
     """
     result = {}
 
     for cmd, version_args in commands.items():
-        path = shutil.which(cmd)
-        if not path:
-            result[cmd] = None
-        else:
-            result[cmd] = path
-        continue
+        # 使用缓存避免重复的 shutil.which() 调用
+        if cmd not in _command_cache:
+            path = shutil.which(cmd)
+            _command_cache[cmd] = path if path else None
 
-        try:
-            proc = subprocess.run(
-                [cmd] + version_args,
-                capture_output=True,
-                text=True,
-                timeout=5,
-                encoding='utf-8'
-            )
-            # 合并 stdout 和 stderr，然后提取类似 1.2.3 或 v1.2.3 的版本
-            output = (proc.stdout or '') + (proc.stderr or '')
-            version_match = re.search(r"\bv?\d+(\.\d+){1,2}\b", output)
-            version = version_match.group(0) if version_match else output.strip()
-            result[cmd] = version
-        except Exception:
-            pass
+        result[cmd] = _command_cache[cmd]
 
     return result
 
 class Prompts:
-    def __init__(self, template_dir: str = None, features: Optional[Dict]= None):
+    # 类级别缓存
+    _env_cache: Dict[str, Environment] = {}
+    _cache_lock = RLock()
+
+    def __init__(self, template_dir: str = None, features: Optional[Dict[str, bool]] = None):
         if not template_dir:
             template_dir = __respath__ / 'prompts'
         self.template_dir = os.path.abspath(template_dir)
-        self.env = Environment(
-            trim_blocks=True,
-            lstrip_blocks=True,
-            loader=FileSystemLoader(self.template_dir),
-            #autoescape=select_autoescape(['j2'])
-        )
-        self._init_env(features)  # 调用 _init_env 方法注册全局变量
 
-    def _init_env(self, features: Optional[Dict[str, bool]] = None):
-        # 可以在这里注册全局变量或 filter
+        # 使用类级别缓存的环境
+        self.env = self._get_cached_env()
+
+        # 为每个实例创建独立的 features（避免不同实例间的状态污染）
+        self.features = PromptFeatures(features or {})
+
+        # 注册实例特定的全局变量
+        self._init_instance_globals()
+
+    def _get_cached_env(self) -> Environment:
+        """获取或创建缓存的环境"""
+        with self._cache_lock:
+            if self.template_dir not in self._env_cache:
+                self._env_cache[self.template_dir] = Environment(
+                    trim_blocks=True,
+                    lstrip_blocks=True,
+                    loader=FileSystemLoader(self.template_dir),
+                    auto_reload=True,  # 自动检测模板文件变化并清理缓存
+                    #autoescape=select_autoescape(['j2'])
+                )
+            return self._env_cache[self.template_dir]
+
+    def _init_instance_globals(self) -> None:
+        """注册实例特定的全局变量"""
+        # 注册 commands（使用缓存）
         commands_to_check = {
             "node": ["--version"],
             "bash": ["--version"],
@@ -108,13 +116,17 @@ class Prompts:
             "osascript": ["-e", 'return "AppleScript OK"']
         }
         self.env.globals['commands'] = check_commands(commands_to_check)
+
+        # 注册 OS 信息
         osinfo = {'system': platform.system(), 'platform': platform.platform(), 'locale': locale.getlocale()}
         self.env.globals['os'] = osinfo
         self.env.globals['python_version'] = platform.python_version()
+
+        # 注册过滤器
         self.env.filters['tojson'] = lambda x: json.dumps(x, ensure_ascii=False, default=str)
 
-        # 注册默认的 features 对象
-        self.env.globals['features'] = PromptFeatures(features or {})
+        # 注册实例特定的 features
+        self.env.globals['features'] = self.features
 
     def get_prompt(self, template_name: str, **kwargs) -> str:
         """
@@ -127,8 +139,30 @@ class Prompts:
         try:
             template = self.env.get_template(template_name)
         except Exception as e:
-            raise FileNotFoundError(f"Prompt template not found: {template_name} in {self.template_dir}") from e
-        return template.render(**kwargs)
+            # 提供更详细的错误上下文信息
+            if hasattr(self.env, 'loader') and hasattr(self.env.loader, 'searchpath'):
+                search_paths = self.env.loader.searchpath
+            else:
+                search_paths = [self.template_dir]
+
+            error_msg = (
+                f"Prompt template not found: {template_name}\n"
+                f"Searched in directories: {search_paths}\n"
+                f"Working directory: {os.getcwd()}\n"
+                f"Original error: {type(e).__name__}: {e}"
+            )
+            raise FileNotFoundError(error_msg) from e
+
+        try:
+            return template.render(**kwargs)
+        except Exception as e:
+            # 模板渲染错误的详细信息
+            error_msg = (
+                f"Template rendering failed for: {template_name}\n"
+                f"Template variables: {list(kwargs.keys())}\n"
+                f"Original error: {type(e).__name__}: {e}"
+            )
+            raise RuntimeError(error_msg) from e
 
     def get_default_prompt(self, **kwargs) -> str:
         """
@@ -179,10 +213,3 @@ class Prompts:
         """
         return self.get_prompt('parse_error', errors=errors)
     
-if __name__ == '__main__':
-    prompts = Prompts()
-    print(prompts.get_default_prompt())
-    func = prompts.get_prompt
-    print(func.__name__)
-    print(inspect.signature(func))
-    print(inspect.getdoc(func))

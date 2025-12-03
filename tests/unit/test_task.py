@@ -9,7 +9,7 @@ import uuid
 from unittest.mock import Mock, MagicMock, patch, AsyncMock
 from pathlib import Path
 
-from aipyapp.aipy.task import Task, TaskError, TaskInputError, TastStateError
+from aipyapp.aipy.task import Task, TaskError, TaskInputError, TaskStateError
 from aipyapp.aipy.task_state import TaskState
 from aipyapp.aipy.blocks import CodeBlocks, CodeBlock
 

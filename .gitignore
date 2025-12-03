@@ -13,3 +13,7 @@ wheels/
 work/
 
 aipyapp/__version__.py
+
+.coverage
+htmlcov/
+
