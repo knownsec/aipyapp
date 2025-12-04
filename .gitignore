@@ -17,3 +17,6 @@ aipyapp/__version__.py
 .coverage
 htmlcov/
 
+# Large files excluded from git
+Showcase/【剪辑版】五合一.mp4
+Showcase/宏观预测/演示视频.wmv
