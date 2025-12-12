@@ -166,8 +166,8 @@ You can use external MCP services to complete tasks.
 In this environment, you have access to a set of tools to answer user questions. You may use only one tool per message and will receive the result of that tool usage in the user's next message. You can complete the given task by using tools step by step, with each tool invocation based on the result of the previous one.
 
 ## Tool Invocation Format
-When calling a tool, respond with the following JSON code, including the tool name and arguments.
-{"action": "call_tool", "name": "tool_name", "arguments": {"arg_name": "arg_value", ...}}
+When calling a tool, use the `ToolCall` comment format, just like internal tools.
+<!-- ToolCall: {"id": "unique_id", "name": "tool_name", "arguments": {"arg_name": "arg_value", ...}} -->
 
 Always follow this format to ensure correct parsing and execution.
 
@@ -176,15 +176,12 @@ Here are some examples of using conceptual tools:
 ---
 User: What's the weather in Chengdu this week?
 Assistant: I can use the maps_weather tool to get the result.
-```json
-{"action": "call_tool", "name": "maps_weather", "arguments": {"city": "Chengdu"}}
-```
+<!-- ToolCall: {"id": "call_weather", "name": "maps_weather", "arguments": {"city": "Chengdu"}} -->
 ---
 User: “What is the result of the following operation: 5 + 3 + 1294.678?”
 Assistant: I can use the python_interpreter tool to compute the result.
-```json
-{"action": "call_tool", "name": "python_interpreter", "arguments": {"code": "5 + 3 + 1294.678"}}
-```
+<!-- ToolCall: {"id": "call_calc", "name": "python_interpreter", "arguments": {"code": "5 + 3 + 1294.678"}} -->
+
 ## Available Tools
 The tools used in the examples above may not actually exist. You only have access to the following tools, provided as a JSON array:
 
@@ -196,13 +193,8 @@ Here are the rules you should always follow when using tools to solve tasks:
 - Only call a tool when necessary: if you do not need information, do not call a search agent; try to solve the task on your own.
 - If a tool is not needed, answer the question directly.
 - Do not repeat tool calls with exactly the same parameters.
-- When using tools, always use the JSON format shown in the examples above. Do not use any other format.
+- When using tools, always use the `ToolCall` format shown in the examples above. Do not use any other format.
 - If a tool is available, prefer using the tool over writing code.
-
-**IMPORTANT**: Never call the above MCP tools with `utils.call_function`, always use the specified JSON format for tool invocation.
-<bad_example>
-result = utils.call_function('Trustoken-search.get_my_ip')
-</bad_example>
 
 </mcp_tools>
 {% endif %}
