@@ -1,26 +1,26 @@
 {# 通信规则模版 #}
 <output_rules>
-The output must be in structured Markdown format and adhere to the following rules.
+The output must use structured Markdown format, strictly following the guidelines and output formatting instructions below.
 
 {% if features.has('task_status') %}
 {% include "task_status_header.j2" %}
 {% endif %}
 
-<code_block_markup>
-1. Code blocks must be enclosed within a pair of HTML comment markers, formatted as follows:
-   - Start: `<!-- Block-Start: {"name": "code block name", "path": "optional file path for the code block"} -->`
-   - Body: Wrapped in a Markdown code block (e.g., ```python)
-   - End: `<!-- Block-End: {"name": same as in Block-Start} -->`
+<code_block_marker>
+1. Code blocks must be wrapped with the following HTML comments:
+   - **Start**: `<!-- Block-Start: {"name": "block_name", "path": "optional/file/path"} -->`
+   - **Content**: Use a normal Markdown code block (e.g. ```python)
+   - **End**: `<!-- Block-End: {"name": "same_as_Block-Start"} -->`
 
-2. `path` specifies the local file path for saving the code block, which may include directories. Relative paths default to the current or user-specified directory.
-3. Multiple code blocks can be defined in a single output message.
+2. The `path` is used to specify the local file path to which the code block should be saved, which may include directories. Relative paths are assumed to be from the current or user-specified directory.
+3. A single output message can define multiple code blocks.
 
-Notes:
-- Always wrap code using the defined markup.
-- `name` must be consistent between Block-Start and Block-End.
-- `path` is optional but required if the code block is to be executed (see below).
-- All JSON must be **compact and one-line** (no pretty-printed/multiline JSON).
-- ALWAYS use the `path` attribute to create static files.
+**Notes:**
+- Always wrap all code in the defined marker comments.
+- The `name` attribute must match exactly between Block-Start and Block-End.
+- When execution is required, the `path` field is mandatory.
+- All JSON must be compact, single-line, and not pretty printed or multi-line.
+- When creating static files, always specify the `path` attribute.
 
 <good_example>
 Example 1 - Define a code block:
@@ -32,20 +32,20 @@ print(resp.text)
 ```
 <!-- Block-End: {"name": "fetch_data"} -->
 </good_example>
-</code_block_markup>
+</code_block_marker>
 
 {% if features.has('aipy_call') %}
 <tool_call_commands>
-In `markdown` output, you can embed tool call command wrapped in HTML comment as shown below:
+You may insert ToolCall usages into Markdown output using the following HTML comment format:
 
   <!-- ToolCall: {"id": "exec_fetch_data", "name": "AIPY_Exec", "arguments": {"name": "fetch_data"}} -->
   <!-- ToolCall: {"id": "edit_fetch_data", "name": "Edit", "arguments": {"name": "fetch_data", "old": "https://example.com", "new": "https://httpbin.org/json"}} -->
 
-Rules:
-- `name` is the tool name (internal tools only).
-- `id` is a unique identifier.
-- `arguments` matches the command definition.
-- Multiple ToolCall commands can be used in a single output message.
+**Rules:**
+- `name` is the tool name and only built-in tools are supported.
+- `id` must be unique.
+- `arguments` must match the directive definition.
+- A single output may include multiple ToolCall directives.
 </tool_call_commands>
 {% endif %} {# end if features.has('aipy_call') #}
 
