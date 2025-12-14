@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-""" 实现兼容 aipy/runtime.py 的接口，支持模块级方法调用 """
+""" Implement interface compatible with aipy/runtime.py, supporting module-level method calls """
 import os
 
 def install_packages(*packages):
-    print(f"[install_packages] 需要安装的包: {packages}")
+    print(f"[install_packages] Packages to install: {packages}")
     return True
 
 def get_env(name, default=None, *, desc=None):
@@ -13,15 +13,14 @@ def get_env(name, default=None, *, desc=None):
 
 def display(path=None, url=None):
     if path:
-        print(f"[display] 显示本地文件: {path}")
+        print(f"[display] Display local file: {path}")
     elif url:
-        print(f"[display] 显示网络资源: {url}")
+        print(f"[display] Display network resource: {url}")
     else:
-        print("[display] 未提供 path 或 url")
+        print("[display] No path or url provided")
 
 def input(prompt=''):
     return __builtins__.input(prompt)
 
 def get_block_by_name(block_name):
     pass
-

@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>特种小分队</title>
+    <title>Special Operations Team</title>
     <style>
         :root {
             --bg-color: #f5f5f5;
@@ -118,7 +118,7 @@
             background-color: var(--table-header-bg);
         }
         
-        /* 代码高亮样式 */
+        /* Code highlighting styles */
         @media (prefers-color-scheme: light) {
             .hljs-keyword { color: #d73a49; }
             .hljs-string { color: #032f62; }
@@ -174,13 +174,13 @@
         }
 
         .code-wrapper[open] summary::after {
-            content: "▲ 隐藏代码";
+            content: "▲ Hide code";
             font-size: 12px;
             color: var(--blockquote-color);
         }
 
         .code-wrapper summary::after {
-            content: "▼ 查看代码";
+            content: "▼ View code";
             font-size: 12px;
             color: var(--blockquote-color);
         }
@@ -198,9 +198,9 @@
     <script src="js/marked.min.js"></script>
     <script src="js/highlight.min.js"></script>
     <script src="js/purify.min.js"></script>
-    <!-- 根据系统主题动态加载代码高亮主题 -->
+    <!-- Dynamically load code highlighting theme based on system theme -->
     <script>
-        // 检测系统主题并加载对应的代码高亮主题
+        // Detect system theme and load corresponding code highlighting theme
         function loadHighlightTheme() {
             const isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
             const themeLink = document.createElement('link');
@@ -211,22 +211,22 @@
             document.head.appendChild(themeLink);
         }
         
-        // 监听系统主题变化
+        // Listen for system theme changes
         window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', loadHighlightTheme);
         
-        // 初始加载主题
+        // Initial theme load
         document.addEventListener('DOMContentLoaded', loadHighlightTheme);
     </script>
     <script>
         const renderer = new marked.Renderer();
-        // 把非代码块里的 HTML（如 <title>）转义成文本
+        // Escape HTML outside code blocks (e.g., <title>) to text
         renderer.html = function(html) {
         return html
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;');
+            .replace(/</g, '<')
+            .replace(/>/g, '>');
         };
 
-        // 设置 marked 选项
+        // Set marked options
         marked.setOptions({
             renderer,
             highlight: function(code, language) {
@@ -239,12 +239,12 @@
             breaks: true
         });
         
-        // 跟踪最后发送消息的用户
+        // Track the user who sent the last message
         let lastUser = '';
         let lastMessage = null;
-        let lastRawContent = ''; // 存储上一条原始的 markdown 文本
+        let lastRawContent = ''; // Store the original markdown text of the last message
         
-        // 追踪是否用户正在滚动查看历史消息
+        // Track whether the user is scrolling to view historical messages
         let userScrolling = false;
         let scrollTimeout = null;
  
@@ -252,30 +252,30 @@
             const codeBlocks = document.querySelectorAll('pre:not(.wrapped)');
 
             codeBlocks.forEach(pre => {
-                // 标记这个代码块已经被包装过
+                // Mark this code block as already wrapped
                 pre.classList.add('wrapped');
                 
                 const wrapper = document.createElement('details');
                 wrapper.className = 'code-wrapper';
                 
-                // 获取代码语言
+                // Get code language
                 const codeElement = pre.querySelector('code');
                 const language = codeElement ? codeElement.className.replace('language-', '') : 'text';
                 
                 const summary = document.createElement('summary');
-                summary.textContent = `点击展开代码 (${language})`;
+                summary.textContent = `Click to expand code (${language})`;
                 
-                // 添加复制按钮
+                // Add copy button
                 const copyButton = document.createElement('button');
                 copyButton.className = 'copy-button';
-                copyButton.textContent = '复制';
+                copyButton.textContent = 'Copy';
                 copyButton.onclick = function(e) {
                     e.stopPropagation();
                     const code = pre.textContent;
                     navigator.clipboard.writeText(code).then(() => {
-                        copyButton.textContent = '已复制!';
+                        copyButton.textContent = 'Copied!';
                         setTimeout(() => {
-                            copyButton.textContent = '复制';
+                            copyButton.textContent = 'Copy';
                         }, 2000);
                     });
                 };
@@ -290,84 +290,84 @@
         function appendMessage(avatar, user, msg) {
             const chatContainer = document.querySelector('.chat-container');
             
-            // 检查是否是同一用户连续发消息
+            // Check if it's the same user sending consecutive messages
             if (user === lastUser && lastMessage) {
-                // 获取最后一条消息的内容区域
+                // Get content area of the last message
                 const markdownDiv = lastMessage.querySelector('.markdown-body');
                 
-                // 拼接原始的 markdown 文本，添加换行符确保格式正确
+                // Concatenate original markdown text, add newline to ensure correct formatting
                 lastRawContent += '\n' + msg;
                 
-                // 使用 marked 解析 markdown，这里不再使用 DOMParser
+                // Use marked to parse markdown, no longer use DOMParser here
                 try {
-                    // 安全地将 markdown 转换为 HTML
+                    // Safely convert markdown to HTML
                     markdownDiv.innerHTML = DOMPurify.sanitize(marked.parse(lastRawContent));
                 } catch(e) {
-                    console.error("解析错误:", e);
-                    // 如果解析失败，至少显示纯文本
+                    console.error("Parse error:", e);
+                    // If parsing fails, at least display plain text
                     markdownDiv.textContent = lastRawContent;
                 }
             } else {
-                // 创建新的消息元素
+                // Create new message element
                 const messageDiv = document.createElement('div');
                 messageDiv.className = 'message';
                 messageDiv.setAttribute('data-user', user);
                 
-                // 创建头像元素
+                // Create avatar element
                 const avatarDiv = document.createElement('div');
                 avatarDiv.className = 'avatar';
                 avatarDiv.textContent = avatar;
                 
-                // 创建消息内容容器
+                // Create message content container
                 const contentDiv = document.createElement('div');
                 contentDiv.className = 'message-content';
                 
-                // 创建用户名元素
+                // Create user name element
                 const userNameDiv = document.createElement('div');
                 userNameDiv.className = 'user-name';
                 userNameDiv.textContent = user;
                 
-                // 创建消息内容元素
+                // Create message content element
                 const markdownDiv = document.createElement('div');
                 markdownDiv.className = 'markdown-body';
                 
-                // 使用 marked 解析 Markdown
+                // Use marked to parse Markdown
                 try {
-                    // 安全地将 markdown 转换为 HTML
+                    // Safely convert markdown to HTML
                     markdownDiv.innerHTML = DOMPurify.sanitize(marked.parse(msg));
                 } catch(e) {
-                    console.error("解析错误:", e);
-                    // 如果解析失败，至少显示纯文本
+                    console.error("Parse error:", e);
+                    // If parsing fails, at least display plain text
                     markdownDiv.textContent = msg;
                 }
                 
-                // 存储该消息的原始 markdown 文本
+                // Store original markdown text of this message
                 lastRawContent = msg;
                 
-                // 存储最后的消息对象引用
+                // Store reference to last message object
                 lastMessage = messageDiv;
                 
-                // 组装消息
+                // Assemble message
                 contentDiv.appendChild(userNameDiv);
                 contentDiv.appendChild(markdownDiv);
                 messageDiv.appendChild(avatarDiv);
                 messageDiv.appendChild(contentDiv);
                 
-                // 添加到聊天容器
+                // Add to chat container
                 chatContainer.appendChild(messageDiv);
             }
             
-            // 更新最后发送消息的用户
+            // Update user who sent last message
             lastUser = user;
             
-            // 如果用户没有主动滚动查看历史，则自动滚动到底部
+            // If user hasn't actively scrolled to view history, auto-scroll to bottom
             if (!userScrolling) {
                 scrollToBottom();
             }
             wrapCodeBlocks();
         }
         
-        // 滚动到底部的函数
+        // Function to scroll to bottom
         function scrollToBottom() {
             const chatContainer = document.querySelector('.chat-container');
             setTimeout(() => {
@@ -375,24 +375,24 @@
             }, 10);
         }
         
-        // 在文档加载完成后执行
+        // Execute after document loading is complete
         document.addEventListener('DOMContentLoaded', function() {
             const chatContainer = document.querySelector('.chat-container');
             
-            // 监听滚动事件以检测用户是否正在查看历史消息
+            // Listen for scroll events to detect if user is viewing historical messages
             chatContainer.addEventListener('scroll', function() {
                 clearTimeout(scrollTimeout);
                 userScrolling = true;
                 
-                // 距离底部小于 50px 时认为用户已经看到最新消息
+                // Consider user has seen latest messages when distance from bottom is less than 50px
                 const isAtBottom = chatContainer.scrollHeight - chatContainer.scrollTop - chatContainer.clientHeight < 50;
                 
-                // 如果滚动到底部或接近底部，重置 userScrolling 标志
+                // Reset userScrolling flag if scrolled to bottom or near bottom
                 if (isAtBottom) {
                     userScrolling = false;
                 }
                 
-                // 如果用户 3 秒不滚动，假设他们已经看完了想看的历史消息
+                // If user doesn't scroll for 3 seconds, assume they've finished viewing wanted history
                 scrollTimeout = setTimeout(() => {
                     if (isAtBottom) {
                         userScrolling = false;

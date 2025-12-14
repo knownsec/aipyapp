@@ -71,7 +71,7 @@ url = "https://mirrors.aliyun.com/pypi/simple/"
 default = false
 
 [tool.ruff]
-# 启用格式化和 lint 规则
+# Enable formatting and lint rules
 select = ["E", "F"]
 ignore = []
 line-length = 88
@@ -80,11 +80,11 @@ line-length = 88
 quote-style = "preserve"
 indent-style = "space"
 line-ending = "auto"
-# 跳过特定字符串格式化
+# Skip specific string formatting
 skip-magic-trailing-comma = true
 
 [tool.ruff.lint]
-# 启用 isort 规则
+# Enable isort rules
 extend-select = []
 
 [dependency-groups]
