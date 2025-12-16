@@ -139,7 +139,7 @@ class Step:
             self.log.error('LLM request error', error=msg.content)
         else:
             self._summary.update(msg.usage)
-            response = Response.from_message(msg, parse_mcp=self.task.mcp)
+            response = Response.from_message(msg)
         return response
 
     def process(self, response: Response) -> list[ToolCallResult] | None:

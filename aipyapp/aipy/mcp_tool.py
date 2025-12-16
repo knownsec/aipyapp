@@ -9,7 +9,7 @@ from .. import T
 
 def build_function_call_tool_name(server_name: str, tool_name: str) -> str:
     """
-    构建函数调用工具名称
+    构建函数调用工具名称，确保符合 Python 函数命名规范
 
     Args:
         server_name: 服务器名称
@@ -24,32 +24,38 @@ def build_function_call_tool_name(server_name: str, tool_name: str) -> str:
         # 生成MD5并取前4位
         sanitized_server = hashlib.md5(sanitized_server.encode('utf-8')).hexdigest()[:4]
     else:
-        # 用下划线替换无效字符，保留 a-z, A-Z, 0-9, 下划线和短横线
-        sanitized_server = re.sub(r'[^a-zA-Z0-9_-]', '_', sanitized_server)
+        # 用下划线替换无效字符，保留 a-z, A-Z, 0-9
+        sanitized_server = re.sub(r'[^a-zA-Z0-9]', '_', sanitized_server)
 
-    sanitized_tool = tool_name.strip().replace('-', '_')
+    sanitized_tool = tool_name.strip()
+    # 用下划线替换无效字符
+    sanitized_tool = re.sub(r'[^a-zA-Z0-9]', '_', sanitized_tool)
 
     # 合并服务器名称和工具名称
     name = sanitized_tool
-    if sanitized_server[:16] not in sanitized_tool:
-        name = f"{sanitized_server[:16] or ''}.{sanitized_tool or ''}"
+    server_prefix = sanitized_server[:16]
+
+    if server_prefix and server_prefix not in sanitized_tool:
+        name = f"{server_prefix}_{sanitized_tool}"
 
     # 确保名称以字母或下划线开头
-    if not re.match(r'^[a-zA-Z]', name):
-        name = f"tool-{name}"
+    if not re.match(r'^[a-zA-Z_]', name):
+        name = f"tool_{name}"
 
-    # 移除连续的下划线/短横线
-    name = re.sub(r'[_-]{2,}', '_', name)
+    # 移除连续的下划线
+    name = re.sub(r'_{2,}', '_', name)
 
     # 最大截断为 63 个字符
     if len(name) > 63:
         name = name[:63]
 
     # 处理边缘情况：确保截断后仍有有效名称
-    if name.endswith('_') or name.endswith('-'):
-        name = name[:-1]
+    name = name.strip('_')
 
-    return name
+    if not name:
+        name = "mcp_tool"
+
+    return name.lower()
 
 
 class MCPToolManager:

@@ -16,7 +16,6 @@ from pydantic import BaseModel, ValidationError, Field
 from .types import Errors
 from .blocks import CodeBlock
 from .toolcalls import ToolCall, ToolName
-from .libmcp import extract_call_tool_str, extra_call_tool_blocks
 from .chat import ChatMessage
 
 FRONT_MATTER_PATTERN = r"^\s*---\s*\n(.*?)\n---\s*"
@@ -91,13 +90,12 @@ class Response(BaseModel):
             self.tool_calls = tool_calls
 
     @classmethod
-    def from_message(cls, message: ChatMessage, parse_mcp: bool = False) -> 'Response':
+    def from_message(cls, message: ChatMessage) -> 'Response':
         """
         内部解析方法
         
         Args:
-            markdown_text: 要解析的 Markdown 文本
-            parse_mcp: 是否解析 MCP 调用
+            message: 要解析的消息对象
         """
         self = cls(message=message)
         markdown = message.content
@@ -111,10 +109,6 @@ class Response(BaseModel):
         # 解析工具调用
         errors.extend(self._parse_tool_calls(markdown))
         
-        # 解析 MCP 调用（如果需要）
-        if parse_mcp:
-            errors.extend(self._parse_mcp_calls(markdown))
-
         # Parse native tool calls from AIMessage
         if hasattr(message.message, 'tool_calls') and message.message.tool_calls:
             errors.extend(self._parse_native_tool_calls(message.message.tool_calls))
@@ -262,11 +256,43 @@ class Response(BaseModel):
         tool_calls = []
         for match in TOOLCALL_PATTERN.finditer(markdown):
             json_str = match.group(1)
-            
-            # 直接使用 Pydantic 解析，让它处理所有验证
+
             try:
-                tool_call = ToolCall.model_validate_json(json_str)
+                data = json.loads(json_str)
+
+                # Ensure ID exists
+                if "id" not in data:
+                    data["id"] = uuid4().hex
+
+                name = data.get("name")
+
+                # Check if it is a known internal tool
+                is_internal = False
+                try:
+                    ToolName(name)
+                    is_internal = True
+                except ValueError:
+                    pass
+
+                if is_internal:
+                    # Internal tool: validate directly
+                    tool_call = ToolCall.model_validate(data)
+                else:
+                    # Unknown tool: treat as MCP tool
+                    # Wrap it into MCPToolArgs structure
+                    wrapped_data = {
+                        "id": data["id"],
+                        "name": "MCP",
+                        "arguments": {
+                            "action": "call_tool",
+                            "name": name,
+                            "arguments": data.get("arguments", {})
+                        }
+                    }
+                    tool_call = ToolCall.model_validate(wrapped_data)
+
                 tool_calls.append(tool_call)
+
             except json.JSONDecodeError as e:
                 errors.add(
                     "Invalid JSON in ToolCall",
@@ -278,47 +304,6 @@ class Response(BaseModel):
                 errors.add(
                     "Invalid ToolCall data",
                     json_str=json_str,
-                    exception=str(e),
-                    error_type=ParseErrorType.PYDANTIC_VALIDATION_ERROR,
-                )
-        self._add_tool_calls(tool_calls)
-        return errors
-    
-    def _parse_mcp_calls(self, markdown: str) -> Errors:
-        """解析 MCP 调用"""
-        errors = Errors()
-        tool_calls = []
-        mcp_calls = extra_call_tool_blocks(self.code_blocks)
-        if not mcp_calls:
-            mcp_calls = extract_call_tool_str(markdown)
-
-        if not mcp_calls:
-            return errors
-        
-        for idx, call in enumerate(mcp_calls, start=1):
-            try:
-                # 将原始 MCP 调用包装为符合 ToolCall 模型的结构
-                # 期望形如：
-                # {
-                #   "id": "<unique>",
-                #   "name": "MCP",
-                #   "arguments": {
-                #       "action": "call_tool",
-                #       "name": "server.tool",
-                #       "arguments": {...}
-                #   }
-                # }
-                wrapped = {
-                    "id": f"mcp-{idx}-{uuid4().hex[:8]}",
-                    "name": "MCP",
-                    "arguments": call,
-                }
-                mcp_call = ToolCall.model_validate(wrapped)
-                tool_calls.append(mcp_call)
-            except ValidationError as e:
-                errors.add(
-                    "Invalid MCPToolCall data",
-                    data=call,
                     exception=str(e),
                     error_type=ParseErrorType.PYDANTIC_VALIDATION_ERROR,
                 )
