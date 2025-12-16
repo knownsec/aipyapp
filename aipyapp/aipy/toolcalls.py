@@ -9,6 +9,7 @@ import uuid
 from enum import Enum
 from typing import Union, List, Dict, Any, Optional, TYPE_CHECKING
 
+from pydantic.aliases import AliasChoices
 from pydantic import BaseModel, model_validator, Field, ValidationError
 from promptabs import SurveyRunner
 
@@ -166,7 +167,7 @@ class ToolCall(BaseModel):
     """Tool call"""
     id: str = Field(title='Unique ID for this ToolCall')
     name: ToolName
-    arguments: Union[ExecToolArgs, EditToolArgs, MCPToolArgs, SubTaskArgs, SurveyToolArgs]
+    arguments: Union[ExecToolArgs, EditToolArgs, MCPToolArgs, SubTaskArgs, SurveyToolArgs] = Field(validation_alias=AliasChoices("arguments", "input"), title="Tool arguments")
 
     @model_validator(mode='before')
     @classmethod

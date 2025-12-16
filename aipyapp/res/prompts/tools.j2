@@ -4,10 +4,15 @@ Parameters:
 #}
 <tools>
 <internal_tools>
-Only the following internal tools are supported in this context. Use `OpenAI Function Calling` to invoke them.
+Only the following internal tools are supported in this context. 
+{% if features.has('openai_call') %}
+Use `OpenAI Function Calling` to invoke them.
+{% else %}
+Use the ToolCall mechanism to invoke them.
+{% endif %}
 
 <exec_tool>
-{% if features.has('aipy_call') %}
+{% if not features.has('openai_call') %}
 Execute a code block:
 - `name`: `AIPY_Exec`
 - `arguments`:  
@@ -28,7 +33,7 @@ Platform restrictions:
 
 <edit_tool>
 Modify existing code blocks incrementally.
-{% if features.has('aipy_call') %}
+{% if not features.has('openai_call') %}
 - `name`: `AIPY_Edit`
 - `arguments`:
   - `name`: Code block name to edit (string, required)
@@ -55,7 +60,7 @@ Error handling:
 A SubTask is a powerful tool to delegate complex, self-contained parts of your main task. Think of it as spawning a new, independent agent to work on a specific problem. 
 The result of their work will be returned to you as a summary, which you **must** use to inform your next steps.
 
-{% if features.has('aipy_call') %}
+{% if not features.has('openai_call') %}
 - `name`: `AIPY_SubTask`
 - `arguments`:
   - `instruction`: The instruction/task for the subtask to execute (string, required)
@@ -140,7 +145,7 @@ There are three methods for parent-subtask communication:
 Use a survey when you **must** ask the user for information to complete a task (e.g., to determine requirements, choose an approach, or understand priorities). 
 The survey provides an interactive, user-friendly way to collect structured information.
 
-{% if features.has('aipy_call') %}
+{% if not features.has('openai_call') %}
 - `name`: `AIPY_Survey`
 - `arguments`:
   - `name`: Survey code block name (string, required)
@@ -160,27 +165,21 @@ For detailed guidance on when to use surveys, survey structure, and best practic
 
 {% if mcp_tools %}
 <mcp_tools>
-You can use external MCP services to complete tasks.
-
-# MCP Tool Invocation Guidelines:
-In this environment, you have access to a set of tools to answer user questions. You may use only one tool per message and will receive the result of that tool usage in the user's next message. You can complete the given task by using tools step by step, with each tool invocation based on the result of the previous one.
-
-## Tool Invocation Format
-When calling a tool, use the `ToolCall` comment format, just like internal tools.
-<!-- ToolCall: {"id": "unique_id", "name": "tool_name", "arguments": {"arg_name": "arg_value", ...}} -->
-
-Always follow this format to ensure correct parsing and execution.
+You can use external MCP services to complete tasks:
+- You have access to a set of tools. 
+- You **MUST** call these tools with the `ToolCall` mechanism.
+- DO NOT attempt to call these tools using `OpenAI Function Calling` or `utils.call_function`.
 
 ## Tool Usage Examples
 Here are some examples of using conceptual tools:
 ---
 User: What's the weather in Chengdu this week?
 Assistant: I can use the maps_weather tool to get the result.
-<!-- ToolCall: {"id": "call_weather", "name": "maps_weather", "arguments": {"city": "Chengdu"}} -->
+<!-- ToolCall: {"id": "call_weather", "name": "maps_weather", "input": {"city": "Chengdu"}} -->
 ---
 User: “What is the result of the following operation: 5 + 3 + 1294.678?”
 Assistant: I can use the python_interpreter tool to compute the result.
-<!-- ToolCall: {"id": "call_calc", "name": "python_interpreter", "arguments": {"code": "5 + 3 + 1294.678"}} -->
+<!-- ToolCall: {"id": "call_calc", "name": "python_interpreter", "input": {"code": "5 + 3 + 1294.678"}} -->
 
 ## Available Tools
 The tools used in the examples above may not actually exist. You only have access to the following tools, provided as a JSON array:

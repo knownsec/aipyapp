@@ -17,6 +17,7 @@ detail = """
 # 功能开关配置
 [features]
 subtask = true
+openai_call = true
 survey = false
 task_status = false
 

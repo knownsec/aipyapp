@@ -64,8 +64,7 @@ Define survey in a JSON code block, then trigger with a Survey ToolCall.
 
 **NOTE**: For every question, users can provide custom answers beyond the provided options.
 
-**Step 2: Trigger the survey with a ToolCall**
-<!-- ToolCall: {"id": "survey_1", "name": "Survey", "arguments": {"name": "user_survey"}} -->
+**Step 2: Call `survey` tool to trigger the survey**
 
 </how_to_use>
 
@@ -192,8 +191,6 @@ Here are some things I need to understand to give you the best recommendation:
 }
 ```
 <!-- Block-End: {"name": "backend_survey"} -->
-
-<!-- ToolCall: {"id": "backend_survey_1", "name": "Survey", "arguments": {"name": "backend_survey"}} -->
 
 **User completes survey with:**
 ```json

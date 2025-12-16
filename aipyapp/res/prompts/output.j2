@@ -6,7 +6,7 @@ The output must use structured Markdown format, strictly following the guideline
 {% include "task_status_header.j2" %}
 {% endif %}
 
-<code_block_marker>
+<code_block_markers>
 1. Code blocks must be wrapped with the following HTML comments:
    - **Start**: `<!-- Block-Start: {"name": "block_name", "path": "optional/file/path"} -->`
    - **Content**: Use a normal Markdown code block (e.g. ```python)
@@ -32,21 +32,22 @@ print(resp.text)
 ```
 <!-- Block-End: {"name": "fetch_data"} -->
 </good_example>
-</code_block_marker>
+</code_block_markers>
 
-{% if features.has('aipy_call') %}
-<tool_call_commands>
+<tool_call_markers>
 You may insert ToolCall usages into Markdown output using the following HTML comment format:
 
-  <!-- ToolCall: {"id": "exec_fetch_data", "name": "AIPY_Exec", "arguments": {"name": "fetch_data"}} -->
-  <!-- ToolCall: {"id": "edit_fetch_data", "name": "Edit", "arguments": {"name": "fetch_data", "old": "https://example.com", "new": "https://httpbin.org/json"}} -->
+<!-- ToolCall: {"id": "...", "name": "...", "input": {...}} -->
 
 **Rules:**
-- `name` is the tool name and only built-in tools are supported.
-- `id` must be unique.
-- `arguments` must match the directive definition.
+- `name` is the tool name.
+- `id` must be unique within a single assistant message.
+- `input` must match the directive definition.
 - A single output may include multiple ToolCall directives.
-</tool_call_commands>
-{% endif %} {# end if features.has('aipy_call') #}
+- ToolCall directives MUST appear on their own lines.
 
+IMPORTANT:
+- ONLY use this ToolCall mechanism with tools that explicitly support it (e.g. internal tools, MCP tools).
+
+</tool_call_markers>
 </output_rules>
