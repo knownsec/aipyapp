@@ -148,6 +148,11 @@ class MCPToolManager:
 
             if cached_tools is not None:
                 # 从缓存中恢复
+                # 重新计算工具ID，以防命名规则发生变化
+                for tool in cached_tools:
+                    tool["id"] = build_function_call_tool_name(
+                        server_name, tool.get("name", "")
+                    )
                 self._tools_dict[server_name] = cached_tools
                 servers_from_cache.append(server_name)
             else:
