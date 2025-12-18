@@ -1,5 +1,3 @@
-import hashlib
-import base64
 from collections import Counter
 from typing import Optional, List, Union, Dict
 
@@ -55,21 +53,11 @@ class MessageStorage(BaseModel):
     def __contains__(self, id: str) -> bool:
         return id in self.messages
     
-    def _compute_id(self, message: Union[AIMessage, UserMessage, SystemMessage, ErrorMessage, ToolMessage]) -> str:
-        """Compute short hash of message role + content using Base64-encoded 8-byte SHA-1"""
-        content_str = f"{message.role}:{message.content}"
-        if hasattr(message, 'tool_call_id'):
-            content_str += f":{message.tool_call_id}"
-        hash_bytes = hashlib.sha1(content_str.encode('utf-8')).digest()[:8]
-        return base64.urlsafe_b64encode(hash_bytes).decode().rstrip('=')
-    
     def store(self, message: Union[AIMessage, UserMessage, SystemMessage, ErrorMessage, ToolMessage]) -> ChatMessage:
-        id = self._compute_id(message)
-        try:
-            message = self.messages[id]
-        except KeyError:
-            self.messages[id] = message
-        return ChatMessage(id=id, message=message)
+        mid = message.mid
+        if not mid in self.messages:
+            self.messages[mid] = message
+        return ChatMessage(id=mid, message=message)
 
     def get(self, id: str) -> Optional[Union[AIMessage, UserMessage, SystemMessage, ErrorMessage, ToolMessage]]:
         return self.messages.get(id)

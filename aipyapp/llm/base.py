@@ -3,6 +3,8 @@
 
 import time
 import random
+import hashlib
+import base64
 from dataclasses import dataclass
 import socket
 from enum import Enum
@@ -37,10 +39,18 @@ class MessageRole(str, Enum):
 class Message(BaseModel):
     role: MessageRole
     content: str | None
+    _mid_cache: str | None = None
 
     def dict(self):
         return {'role': self.role.value, 'content': self.content}
     
+    @property
+    def mid(self):
+        if self._mid_cache is None:
+            hash_bytes = hashlib.md5(self.model_dump_json().encode('utf-8')).digest()
+            self._mid_cache = base64.urlsafe_b64encode(hash_bytes[:8]).decode('utf-8').rstrip('=')
+        return self._mid_cache
+
 class UserMessage(Message):
     role: Literal[MessageRole.USER] = MessageRole.USER
     content: Union[str, List[Union[TextItem, ImageItem]]]
@@ -57,7 +67,7 @@ class UserMessage(Message):
             elif item.type == 'image-url':
                 contents.append(item.image_url.url)
         return '\n'.join(contents)
-    
+
 class SystemMessage(Message):
     role: Literal[MessageRole.SYSTEM] = MessageRole.SYSTEM
 
