@@ -149,6 +149,9 @@ class Client:
         if not self.current:
             return False
 
+        if not self.task.has_feature('openai_call'):
+            return False
+        
         # Blacklist for models known not to support function calling
         unsupported_models = {
             'deepseek-v3.2-speciale',
@@ -182,7 +185,7 @@ class Client:
         else:
             messages.append(user_message)
 
-        kwargs = {}
+        tools = None
         if self.supports_function_calling():
             tools = []
             # Add internal tools
@@ -194,14 +197,11 @@ class Client:
                 if mcp_tools:
                     tools.extend(mcp_tools)
 
-            if tools:
-                kwargs['tools'] = tools
-
         msg = client(
             [m.dict() for m in messages],
             stream_processor=stream_processor,
             extra_headers=self.extra_headers,
-            **kwargs
+            tools=tools
         )
         msg = self.storage.store(msg)
         if isinstance(msg.message, AIMessage):
@@ -210,5 +210,6 @@ class Client:
                     self.context_manager.add_message(m)
                 self.context_manager.add_message(msg)
             else:
+                user_message.message.tools = tools
                 self.context_manager.add_chat(user_message, msg)
         return msg

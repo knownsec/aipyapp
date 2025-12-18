@@ -238,6 +238,9 @@ class Task(Stoppable):
             return self.steps[0].data.start_time
         return None
     
+    def has_feature(self, name: str) -> bool:
+        return self.features.has(name)
+    
     def create_logger(self):
         task_logger = logger.bind(src='task', task_id=self.task_id)
         task_logger.add(

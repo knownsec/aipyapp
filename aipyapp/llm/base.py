@@ -44,7 +44,8 @@ class Message(BaseModel):
 class UserMessage(Message):
     role: Literal[MessageRole.USER] = MessageRole.USER
     content: Union[str, List[Union[TextItem, ImageItem]]]
-
+    tools: List[Dict[str, Any]] | None = None
+    
     @property
     def content_str(self):
         if isinstance(self.content, str):

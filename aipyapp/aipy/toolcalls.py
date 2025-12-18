@@ -48,8 +48,20 @@ class ToolResult(BaseModel):
 
 class ExecToolArgs(BaseModel):
     """
-    Execute a code block. Provide the code content directly in the 'code' argument.
-    Python is always executable. Other languages require a 'path' attribute.
+    Execute code
+
+    You can provide executable code in either of the following ways:
+    - Inline code: Provide the full source code directly in the `code` argument.
+    - Referenced code block: Use the `name` argument to reference a code block that is defined in the output message.
+
+    Code block resolution rules:
+    - If `code` is NOT provided: `name` must refer to an defined code block (either in the current or previous output message) or execution must fail.
+    - If code IS provided: A code block identified by name will be created or updated using the provided code.The updated code block becomes the source of truth for execution.
+
+    Execution rules:
+    - Python code is always executable and does not require a file path.
+    - Non-Python code must include a valid `path` attribute that points to the executable file.
+    - The referenced code block must exactly match the given `name`.
     """
     name: Optional[str] = Field(
         None,

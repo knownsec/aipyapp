@@ -6,9 +6,9 @@ Parameters:
 <internal_tools>
 Only the following internal tools are supported in this context. 
 {% if features.has('openai_call') %}
-Use `OpenAI Function Calling` to invoke them.
+**ALWAYS** invoke them through OpenAI’s function-calling mechanism.
 {% else %}
-Use the ToolCall mechanism to invoke them.
+ALWAYS invoke them through `TooCall` marker defined in the output rules.
 {% endif %}
 
 <exec_tool>
