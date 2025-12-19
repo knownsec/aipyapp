@@ -132,6 +132,13 @@ class Response(BaseModel):
             try:
                 json_str = tc.function.arguments
 
+                # Some providers may send empty arguments for no-arg tool calls.
+                # Treat empty/blank/None as an empty JSON object to avoid parse errors.
+                if json_str is None:
+                    json_str = "{}"
+                elif isinstance(json_str, str) and not json_str.strip():
+                    json_str = "{}"
+
                 # 尝试修复 JSON 字符串：丢弃最后一个 '}' 之后的内容
                 last_brace_idx = json_str.rfind('}')
                 if last_brace_idx != -1 and last_brace_idx < len(json_str) - 1:
