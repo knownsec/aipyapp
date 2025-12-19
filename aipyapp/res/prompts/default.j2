@@ -4,7 +4,9 @@
 
 {% include "output.j2" %}
 
+{% if features.has('exec_code') %}
 {% include "tools.j2" %}
+{% endif %}
 
 {% include "workflow.j2" %}
 

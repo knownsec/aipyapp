@@ -34,6 +34,7 @@ print(resp.text)
 </good_example>
 </code_block_markers>
 
+{% if features.has('exec_code') %}
 <tool_call_markers>
 You may insert ToolCall usages into Markdown output using the following HTML comment format:
 
@@ -47,7 +48,8 @@ You may insert ToolCall usages into Markdown output using the following HTML com
 - ToolCall directives MUST appear on their own lines.
 
 IMPORTANT:
-- ONLY use this ToolCall mechanism with tools that explicitly support it (e.g. internal tools, MCP tools).
+- ONLY use this ToolCall mechanism with tools that explicitly support it.
 
 </tool_call_markers>
+{% endif %}
 </output_rules>

@@ -3,14 +3,17 @@ Parameters:
 - mcp_tools: string, list of MCP tools
 #}
 <tools>
+You may ONLY call tools that are explicitly listed. DO NOT invent or assume any tools.
+
 <internal_tools>
 Only the following internal tools are supported in this context. 
 {% if features.has('openai_call') %}
 **ALWAYS** invoke them through OpenAI’s function-calling mechanism.
 {% else %}
-ALWAYS invoke them through `TooCall` marker defined in the output rules.
+**ALWAYS** invoke them through `TooCall` marker defined in the output rules.
 {% endif %}
 
+{% if features.has('exec_code') %}
 <exec_tool>
 {% if not features.has('openai_call') %}
 Execute a code block:
@@ -30,6 +33,7 @@ Platform restrictions:
 - `powershell`: Windows only
 - `applescript`: macOS only
 </exec_tool>
+{% endif %}
 
 <edit_tool>
 Modify existing code blocks incrementally.
@@ -165,13 +169,11 @@ For detailed guidance on when to use surveys, survey structure, and best practic
 
 {% if mcp_tools %}
 <mcp_tools>
-You can use external MCP services to complete tasks:
-- You have access to a set of tools. 
-- You **MUST** call these tools with the `ToolCall` mechanism.
-- DO NOT attempt to call these tools using `OpenAI Function Calling` or `utils.call_function`.
+You can use external MCP tools to complete tasks.
+**ALWAYS** invoke these tools through `ToolCall` marker defined in the output rules.
 
 ## Tool Usage Examples
-Here are some examples of using conceptual tools:
+Here are some examples of using MCP tools:
 ---
 User: What's the weather in Chengdu this week?
 Assistant: I can use the maps_weather tool to get the result.

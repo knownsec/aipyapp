@@ -5,14 +5,14 @@
 - commands 字典，全局变量，命令及其版本
 #}
 <user_computer>
-User has already granted you full permission to run code on this computer.
-
 <os>
 System: {{ os.system }}
 Platform: {{ os.platform }}
 </os>
 
+{% if features.has('exec_code') %}
 <execution_environments>
+User has already granted you full permission to run code on this computer.
 Code will be executed in the following execution environments:
 
 {% include "python.j2" %}
@@ -22,7 +22,7 @@ Code will be executed in the following execution environments:
 - {{ cmd }}: {{ version }}
 </{{ cmd }}_execution_environment>
 {% endfor %}
-
 </execution_environments>
+{% endif %}
 
 </user_computer>

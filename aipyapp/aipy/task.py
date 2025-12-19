@@ -238,6 +238,9 @@ class Task(Stoppable):
             return self.steps[0].data.start_time
         return None
     
+    def set_feature(self, name: str, value: bool):
+        self.features.set(name, value)
+    
     def has_feature(self, name: str) -> bool:
         return self.features.has(name)
     
@@ -503,6 +506,8 @@ class Task(Stoppable):
             self.emit('task_started', instruction=instruction, title=title, task_id=self.task_id, parent_id=self.parent.task_id if self.parent else None)
         else:
             self._auto_compact()
+
+        self.log.info("Start task with features: {}", self.features.enabled_features)
 
         # We MUST create the task directory here because it could be a resumed task.
         self.cwd.mkdir(exist_ok=True, parents=True)

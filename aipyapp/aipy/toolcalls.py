@@ -516,9 +516,12 @@ class ToolCallProcessor:
 def get_internal_tools_openai_format(features: PromptFeatures) -> List[Dict[str, Any]]:
     """Generate OpenAI tool definitions for internal tools."""
     tools_map = [
-        (ToolName.EXEC, ExecToolArgs),
         (ToolName.EDIT, EditToolArgs)
     ]
+
+    if features.has('exec_code'):
+        tools_map.append((ToolName.EXEC, ExecToolArgs))
+    
     if features.has('survey'):
         tools_map.append((ToolName.SURVEY, SurveyToolArgs))
 

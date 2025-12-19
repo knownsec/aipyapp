@@ -11,6 +11,11 @@ class PromptFeatures:
         if features:
             self.features.update(features)
 
+    @property
+    def enabled_features(self) -> List[str]:
+        """返回所有启用的功能"""
+        return [k for k, v in self.features.items() if v]
+    
     def has(self, feature_name: str) -> bool:
         """检查功能是否存在且为true"""
         return self.features.get(feature_name, False)
