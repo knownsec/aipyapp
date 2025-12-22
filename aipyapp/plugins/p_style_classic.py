@@ -198,7 +198,9 @@ class DisplayClassic(RichDisplayPlugin):
     def on_parse_reply_completed(self, event):
         """消息解析结果事件处理"""
         response = event.typed_event.response
-        if not response:
+        if response is None:
+            return
+        if not (response.code_blocks or response.tool_calls or response.errors):
             return
             
         title = self._get_title(T("Message parse result"))
@@ -227,7 +229,7 @@ class DisplayClassic(RichDisplayPlugin):
         errors = response.errors
         if errors:
             et = tree.add(T('Errors'))
-            for error in errors:
+            for error in errors.errors:
                 et.add(error.message)
         
         self.console.print(tree)

@@ -38,7 +38,10 @@ class Errors(BaseModel):
 
     def to_json(self) -> str:
         """获取错误信息"""
-        return self.model_dump_json(exclude_none=True, exclude_unset=True)
+        # Do NOT use exclude_unset=True here.
+        # The `errors` list is often mutated in-place via `add()/append()`, and
+        # pydantic may still consider the field "unset" which would serialize to `{}`.
+        return self.model_dump_json(exclude_none=True)
 
 T = TypeVar('T')
 ItemType = TypeVar('ItemType')

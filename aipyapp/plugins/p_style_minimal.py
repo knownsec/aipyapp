@@ -198,8 +198,10 @@ class DisplayMinimal(RichDisplayPlugin):
     def on_parse_reply_completed(self, event):
         """消息解析结果事件处理"""
         response = event.typed_event.response
+        if response is None:
+            return
         errors = response.errors
-        if not response:
+        if not (response.code_blocks or response.tool_calls or errors):
             return
             
         title = self._get_title(T("Message parse result"))
