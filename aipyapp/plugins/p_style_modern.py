@@ -142,7 +142,9 @@ class DisplayModern(RichDisplayPlugin):
     def on_parse_reply_completed(self, event):
         """消息解析结果事件处理"""
         response = event.typed_event.response
-        if not response:
+        if response is None:
+            return
+        if not (response.code_blocks or response.tool_calls or response.errors):
             return
             
         # 显示解析结果摘要
@@ -157,6 +159,15 @@ class DisplayModern(RichDisplayPlugin):
                 self.console.print(f"🔧 {T('Found {} tool calls ({} SubTasks)').format(tool_count, subtask_count)}", style="dim blue")
             else:
                 self.console.print(f"🔧 {T('Found {} tool calls').format(tool_count)}", style="dim blue")
+
+        if response.errors:
+            error_count = len(response.errors)
+            first_error = response.errors.errors[0].message if response.errors.errors else ""
+            suffix = f": {first_error}" if first_error else ""
+            self.console.print(
+                f"❌ {T('Found {} errors').format(error_count)}{suffix}",
+                style="dim red",
+            )
                 
     def on_exec_started(self, event):
         """代码执行开始事件处理"""

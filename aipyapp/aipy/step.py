@@ -31,14 +31,29 @@ class Round(BaseModel):
     def should_continue(self) -> bool:
         return self.llm_response.should_continue()
     
-    def get_system_feedback(self, prompts: Prompts) -> UserMessage | None:
+    def get_system_feedback(self, prompts: Prompts) -> UserMessage | ToolMessage | list[ToolMessage] | None:
         if self.llm_response.errors:
             prompt = prompts.get_parse_error_prompt(self.llm_response.errors)
-        elif self.toolcall_results:
+
+            # 如果 assistant 回复里包含 tool_calls，OpenAI/兼容接口要求：
+            # assistant(tool_calls) 之后必须跟对应 tool(tool_call_id) 消息。
+            tool_calls = getattr(getattr(self.llm_response.message, 'message', None), 'tool_calls', None)
+            if tool_calls:
+                tool_messages: list[ToolMessage] = []
+                for tc in tool_calls:
+                    tc_id = getattr(tc, 'id', None)
+                    if tc_id:
+                        tool_messages.append(ToolMessage(tool_call_id=tc_id, content=prompt))
+                if tool_messages:
+                    return tool_messages
+
+            return UserMessage(content=prompt)
+
+        if self.toolcall_results:
             prompt = prompts.get_toolcall_results_prompt(self.toolcall_results)
-        else:
-            return None
-        return UserMessage(content=prompt)
+            return UserMessage(content=prompt)
+
+        return None
     
     def can_safely_delete(self) -> bool:
         """判断Round对应的上下文消息是否可以安全删除
@@ -200,8 +215,13 @@ class Step:
                 break
 
             if isinstance(system_feedback, list):
-                round.system_feedback = system_feedback
-                user_message = system_feedback
+                stored_msgs = []
+                for msg in system_feedback:
+                    stored_msgs.append(
+                        msg if isinstance(msg, ChatMessage) else message_storage.store(msg)
+                    )
+                round.system_feedback = stored_msgs
+                user_message = stored_msgs
             else:
                 round.system_feedback = message_storage.store(system_feedback)
                 user_message = round.system_feedback

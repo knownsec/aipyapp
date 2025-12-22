@@ -149,7 +149,6 @@ class Response(BaseModel):
                             f"{extra!r}"
                         )
                         self.log.warning(msg)
-                        print(f"Warning: {msg}")
                         json_str = json_str[:last_brace_idx+1]
 
                 args = json.loads(json_str)
