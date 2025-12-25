@@ -139,6 +139,7 @@ class Task(Stoppable):
             self.shared_dir = parent.shared_dir
         self.log = self.create_logger()
 
+        self.lang = None
         self.gui = manager.settings.gui
         self._saved = False
         self.max_rounds = manager.settings.get('max_rounds', MAX_ROUNDS)
@@ -450,7 +451,7 @@ class Task(Stoppable):
         self.log.info('Task done', path=newname)
         self.emit('task_completed', path=str(newname), task_id=self.task_id, parent_id=self.parent.task_id if self.parent else None)
 
-    def prepare_user_prompt(self, instruction: str, first_run: bool=False, lang: str | None = None) -> ChatMessage:
+    def prepare_user_prompt(self, instruction: str, first_run: bool=False) -> ChatMessage:
         """处理多模态内容并验证模型能力"""
         mmc = MMContent(instruction, base_path=self.cwd.parent)
         try:
@@ -461,8 +462,7 @@ class Task(Stoppable):
         content = message.content
         if isinstance(content, str):
             if first_run:
-                chat_lang = lang or self.settings.get('lang')
-                content = self.prompts.get_task_prompt(content, gui=self.gui, parent=self.parent, lang=chat_lang)
+                content = self.prompts.get_task_prompt(self, content)
             else:
                 content = self.prompts.get_chat_prompt(content, self.instruction)
             message.content = content
@@ -498,7 +498,8 @@ class Task(Stoppable):
         instruction: 用户输入的字符串（可包含@file等多模态标记）
         """
         first_run = not self.steps
-        user_message = self.prepare_user_prompt(instruction, first_run, lang=lang)
+        self.lang = lang or self.settings.get('lang')
+        user_message = self.prepare_user_prompt(instruction, first_run)
         if first_run:
             # 如果上下文已经有消息，说明继承了上下文，不需要重复添加系统消息
             if not self.context_manager.messages:

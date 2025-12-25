@@ -21,6 +21,11 @@ from ..exec import ExecResult, ProcessResult, PythonResult
 if TYPE_CHECKING:
     from .task import Task
 
+class ToolSource(str, Enum):
+    """Tool source"""
+    OPENAI = "openai"
+    AIPY = "aipy"
+
 class ToolName(str, Enum):
     """Tool name"""
     EDIT = "AIPY_Edit"
@@ -178,6 +183,7 @@ class SurveyToolResult(ToolResult):
 class ToolCall(BaseModel):
     """Tool call"""
     id: str = Field(title='Unique ID for this ToolCall')
+    source: ToolSource = Field(title='Tool source')
     name: ToolName
     arguments: Union[ExecToolArgs, EditToolArgs, MCPToolArgs, SubTaskArgs, SurveyToolArgs] = Field(validation_alias=AliasChoices("arguments", "input"), title="Tool arguments")
 
@@ -195,11 +201,24 @@ class ToolCall(BaseModel):
     def __repr__(self):
         return self.__str__()
 
+    def is_openai(self) -> bool:
+        return self.source == ToolSource.OPENAI
+    
+    def is_aipy(self) -> bool:
+        return self.source == ToolSource.AIPY
+
 class ToolCallResult(BaseModel):
     """Tool call result"""
     id: str = Field(title='Unique ID for this ToolCall')
+    source: ToolSource = Field(title='Tool source')
     name: ToolName
     result: Union[ExecToolResult, EditToolResult, MCPToolResult, SubTaskResult, SurveyToolResult, ToolResult] = Field(title="Tool result")
+
+    def is_openai(self) -> bool:
+        return self.source == ToolSource.OPENAI
+    
+    def is_aipy(self) -> bool:
+        return self.source == ToolSource.AIPY
 
 class ToolCallProcessor:
     """工具调用处理器 - 高级接口"""
@@ -229,6 +248,7 @@ class ToolCallProcessor:
                 results.append(ToolCallResult(
                     id=tool_call.id,
                     name=tool_call.name,
+                    source=tool_call.source,
                     result=ToolResult(
                         error=Error.new(
                             f"Tool call {tool_call.id} has already been executed. "
@@ -296,6 +316,7 @@ class ToolCallProcessor:
 
         toolcall_result = ToolCallResult(
             id=tool_call.id,
+            source=tool_call.source,
             name=tool_call.name,
             result=result
         )

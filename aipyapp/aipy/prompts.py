@@ -143,20 +143,18 @@ class Prompts:
         """
         return self.get_prompt('default', **kwargs)
 
-    def get_task_prompt(self, instruction: str, gui: bool = False, parent: Task | None = None, lang: str = None) -> str:
+    def get_task_prompt(self, task: Task, instruction: str) -> str:
         """
         获取任务提示
-        :param instruction: 用户输入的字符串
-        :param gui: 是否使用 GUI 模式
-        :param parent: 父任务（如果有）
+        :param task: 任务对象
         :return: 渲染后的字符串
         """
         contexts = {}
         contexts['Today'] = datetime.now().strftime('%Y-%m-%d')
-        if not gui:
+        if not task.gui:
             contexts['TERM'] = os.environ.get('TERM', 'unknown')
-        constraints = {"lang": lang}
-        return self.get_prompt('task', instruction=instruction, contexts=contexts, constraints=constraints, gui=gui, parent=parent)
+        constraints = {"lang": task.lang}
+        return self.get_prompt('task', instruction=instruction, contexts=contexts, constraints=constraints, gui=task.gui, parent=task.parent, task_id=task.task_id)
     
     def get_toolcall_results_prompt(self, results: List[ToolCallResult]) -> str:
         """

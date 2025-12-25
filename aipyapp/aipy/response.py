@@ -15,7 +15,7 @@ from pydantic import BaseModel, ValidationError, Field
 
 from .types import Errors
 from .blocks import CodeBlock
-from .toolcalls import ToolCall, ToolName
+from .toolcalls import ToolCall, ToolName, ToolSource
 from .chat import ChatMessage
 
 FRONT_MATTER_PATTERN = r"^\s*---\s*\n(.*?)\n---\s*"
@@ -168,7 +168,8 @@ class Response(BaseModel):
                 tool_call = ToolCall(
                     name=tool_name,
                     arguments=arguments,
-                    id=tc.id
+                    id=tc.id,
+                    source=ToolSource.OPENAI
                 )
                 tool_calls.append(tool_call)
 
@@ -281,6 +282,7 @@ class Response(BaseModel):
                     pass
 
                 if is_internal:
+                    data['source'] = ToolSource.AIPY
                     # Internal tool: validate directly
                     tool_call = ToolCall.model_validate(data)
                 else:
@@ -289,6 +291,7 @@ class Response(BaseModel):
                     wrapped_data = {
                         "id": data["id"],
                         "name": "MCP",
+                        "source": ToolSource.AIPY,
                         "arguments": {
                             "action": "call_tool",
                             "name": name,

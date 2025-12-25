@@ -50,6 +50,15 @@ class Round(BaseModel):
             return UserMessage(content=prompt)
 
         if self.toolcall_results:
+            tool_messages = []
+            for res in self.toolcall_results:
+                if res.is_openai(): # ToolCallResult has id
+                    # 确保 result 是字符串
+                    content = res.result.to_json() if hasattr(res.result, 'to_json') else str(res.result)
+                    msg = ToolMessage(tool_call_id=res.id, content=content)
+                    tool_messages.append(msg) 
+            if tool_messages:
+                return tool_messages           
             prompt = prompts.get_toolcall_results_prompt(self.toolcall_results)
             return UserMessage(content=prompt)
 
@@ -194,23 +203,7 @@ class Step:
             round.toolcall_results = self.process(response)
 
             # 生成系统反馈消息
-            system_feedback = None
-
-            # 优先尝试生成 ToolMessage
-            if round.toolcall_results and self.task.client.supports_function_calling():
-                tool_messages = []
-                for res in round.toolcall_results:
-                    if res.id: # ToolCallResult has id
-                        # 确保 result 是字符串
-                        content = res.result.to_json() if hasattr(res.result, 'to_json') else str(res.result)
-                        msg = ToolMessage(tool_call_id=res.id, content=content)
-                        tool_messages.append(message_storage.store(msg))
-                if tool_messages:
-                    system_feedback = tool_messages
-
-            if not system_feedback:
-                system_feedback = round.get_system_feedback(self.task.prompts)
-
+            system_feedback = round.get_system_feedback(self.task.prompts)
             if not system_feedback:
                 break
 

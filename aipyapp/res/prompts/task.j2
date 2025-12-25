@@ -29,14 +29,14 @@
 </constraints>
 
 {% if parent is defined and parent %}
-<parent_task>
-This task is a subtask of the following parent task. Consider the context of the parent task when generating your response.
+<task_info>
+Current task ID: {{ task_id }}.
 
+This is a subtask created by the following parent task:
 - Task ID: {{ parent.task_id }}
 - Instruction: {{ parent.instruction }}
 
-And, you **SHOULD** generate a final response with enough information for the parent task to understand the progress of this subtask.
-
-</parent_task>
+You **SHOULD** generate a final response with enough information for the parent task to understand the progress of this subtask.
+</task_info>
 {% endif %}
 </user_prompt>
