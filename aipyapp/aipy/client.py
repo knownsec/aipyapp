@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING, List
 from .. import __version__
 from ..llm import ModelCapability, AIMessage
 from .chat import ChatMessage
-from .toolcalls import get_internal_tools_openai_format
 
 if TYPE_CHECKING:
     from .task import Task
@@ -185,18 +184,7 @@ class Client:
         else:
             messages.append(user_message)
 
-        tools = None
-        if self.supports_function_calling():
-            tools = []
-            # Add internal tools
-            tools.extend(get_internal_tools_openai_format(self.task.features))
-
-            # Add MCP tools
-            if self.task.mcp:
-                mcp_tools = self.task.mcp.get_openai_tools()
-                if mcp_tools:
-                    tools.extend(mcp_tools)
-
+        tools = self.task.tools if self.supports_function_calling() else None
         msg = client(
             [m.dict() for m in messages],
             stream_processor=stream_processor,
@@ -210,6 +198,5 @@ class Client:
                     self.context_manager.add_message(m)
                 self.context_manager.add_message(msg)
             else:
-                user_message.message.tools = tools
                 self.context_manager.add_chat(user_message, msg)
         return msg

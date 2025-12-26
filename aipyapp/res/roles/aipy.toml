@@ -18,6 +18,7 @@ detail = """
 [features]
 subtask = true
 openai_call = true
+aipy_call = false
 exec_code = true
 survey = false
 task_status = false

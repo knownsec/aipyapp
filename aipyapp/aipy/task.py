@@ -25,7 +25,7 @@ from .utils import safe_rename, validate_file
 from .events import TypedEventBus, BaseEvent
 from .multimodal import MMContent   
 from .context import ContextManager, ContextData
-from .toolcalls import ToolCallProcessor
+from .toolcalls import ToolCallProcessor, get_internal_tools_openai_format
 from .chat import MessageStorage, ChatMessage
 from .step import Step, StepData
 from .blocks import CodeBlocks
@@ -73,6 +73,7 @@ class TaskData(BaseModel):
     id: str = Field(default_factory=lambda: uuid.uuid4().hex)
     version: int = Field(default=TASK_VERSION, frozen=True)
     depth: int = Field(default=0)
+    tools: List[Dict[str, Any]] = Field(default_factory=list)
     steps: List[StepData] = Field(default_factory=list)
     blocks: CodeBlocks = Field(default_factory=CodeBlocks)
     context: ContextData = Field(default_factory=ContextData)
@@ -178,6 +179,13 @@ class Task(Stoppable):
         if self.depth >= MAX_DEPTH:
             self.log.warning(f"Task depth {self.depth} exceeds maximum of {MAX_DEPTH}")
             self.features.disable('subtask')
+        tools = []
+        tools.extend(get_internal_tools_openai_format(self.features))
+        if self.mcp:
+            mcp_tools = self.mcp.get_openai_tools()
+            if mcp_tools:
+                tools.extend(mcp_tools)
+        self.data.tools = tools
 
         self.prompts = Prompts(features=self.features)
         self.client_manager = manager.client_manager
@@ -238,6 +246,10 @@ class Task(Stoppable):
         if self.steps:
             return self.steps[0].data.start_time
         return None
+    
+    @property
+    def tools(self):
+        return self.data.tools
     
     def set_feature(self, name: str, value: bool):
         self.features.set(name, value)

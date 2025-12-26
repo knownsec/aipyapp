@@ -34,7 +34,7 @@ print(resp.text)
 </good_example>
 </code_block_markers>
 
-{% if features.has('exec_code') %}
+{% if features.has('exec_code', 'aipy_call') %}
 <tool_call_markers>
 You may insert ToolCall usages into Markdown output using the following HTML comment format:
 

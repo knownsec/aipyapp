@@ -16,9 +16,9 @@ class PromptFeatures:
         """返回所有启用的功能"""
         return [k for k, v in self.features.items() if v]
     
-    def has(self, feature_name: str) -> bool:
+    def has(self, *feature_names: str) -> bool:
         """检查功能是否存在且为true"""
-        return self.features.get(feature_name, False)
+        return all(self.features.get(feature_name, False) for feature_name in feature_names)
 
     def enabled(self, feature_name: str) -> bool:
         """has的别名"""

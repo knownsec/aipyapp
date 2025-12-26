@@ -54,7 +54,7 @@ class Message(BaseModel):
 class UserMessage(Message):
     role: Literal[MessageRole.USER] = MessageRole.USER
     content: Union[str, List[Union[TextItem, ImageItem]]]
-    tools: List[Dict[str, Any]] | None = None
+    
     
     @property
     def content_str(self):
@@ -98,6 +98,7 @@ class AIMessage(Message):
 
 class ErrorMessage(Message):
     role: Literal[MessageRole.ERROR] = MessageRole.ERROR
+    status_code: int | None = None
 
 @dataclass
 class RetryConfig:
@@ -225,6 +226,12 @@ class BaseClient(ABC):
                     )
                     return ErrorMessage(content=f"{e} (attempts={attempt})")
 
+            except openai.APIStatusError as e:
+                self.log.exception(
+                    f"{self.name} API call failed with status code {e.status_code}",
+                    e=e,
+                )
+                return ErrorMessage(content=e.response.text, status_code=e.status_code)
             except Exception as e:
                 self.log.exception(
                     (

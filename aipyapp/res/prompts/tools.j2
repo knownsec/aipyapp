@@ -6,19 +6,13 @@ Parameters:
 You may ONLY call tools that are explicitly listed. DO NOT invent or assume any tools.
 
 <internal_tools>
-Only the following internal tools are supported in this context. 
-{% if features.has('openai_call') %}
-**ALWAYS** invoke them through OpenAI’s function-calling mechanism.
-{% else %}
-**ALWAYS** invoke them through `TooCall` marker defined in the output rules.
-{% endif %}
-
 {% if features.has('exec_code') %}
 <exec_tool>
-{% if not features.has('openai_call') %}
+Name: `AIPY_Exec`
+
+{% if features.has('aipy_call') %}
 Execute a code block:
-- `name`: `AIPY_Exec`
-- `arguments`:  
+- `input`:  
   - `name`: Code block name to execute (string, required)
 {% else %}
 Execute a code block or string of code.
@@ -36,10 +30,11 @@ Platform restrictions:
 {% endif %}
 
 <edit_tool>
+Name: `AIPY_Edit`
+
 Modify existing code blocks incrementally.
-{% if not features.has('openai_call') %}
-- `name`: `AIPY_Edit`
-- `arguments`:
+{% if features.has('aipy_call') %}
+- `input`: 
   - `name`: Code block name to edit (string, required)
   - `old`: Exact string to find and replace (string, required, must match exactly including whitespace)
   - `new`: Replacement string (string, required, can be empty for deletion)
@@ -61,12 +56,13 @@ Error handling:
 
 {% if features.has('subtask') %}
 <subtask_tool>
+Name: `AIPY_SubTask`
+
 A SubTask is a powerful tool to delegate complex, self-contained parts of your main task. Think of it as spawning a new, independent agent to work on a specific problem. 
 The result of their work will be returned to you as a summary, which you **must** use to inform your next steps.
 
-{% if not features.has('openai_call') %}
-- `name`: `AIPY_SubTask`
-- `arguments`:
+{% if features.has('aipy_call') %}
+- `input`:
   - `instruction`: The instruction/task for the subtask to execute (string, required)
   - `title`: Optional descriptive title for the subtask (string, optional)
 {% endif %}
@@ -146,12 +142,13 @@ There are three methods for parent-subtask communication:
 
 {% if features.has('survey') %}
 <survey_tool>
+Name: `AIPY_Survey`
+
 Use a survey when you **must** ask the user for information to complete a task (e.g., to determine requirements, choose an approach, or understand priorities). 
 The survey provides an interactive, user-friendly way to collect structured information.
 
-{% if not features.has('openai_call') %}
-- `name`: `AIPY_Survey`
-- `arguments`:
+{% if features.has('aipy_call') %}
+- `input`:
   - `name`: Survey code block name (string, required)
 {% endif %}
 
@@ -167,7 +164,7 @@ For detailed guidance on when to use surveys, survey structure, and best practic
 
 </internal_tools>
 
-{% if mcp_tools %}
+{% if mcp_tools and features.has('aipy_call') %}
 <mcp_tools>
 You can use external MCP tools to complete tasks.
 **ALWAYS** invoke these tools through `ToolCall` marker defined in the output rules.
