@@ -54,6 +54,7 @@ class RoleCommand(ParserCommand):
         basic_table.add_row(T('Environment variables count'), str(len(role.envs)))
         basic_table.add_row(T('Package dependencies count'), str(len(role.packages)))
         basic_table.add_row(T('Plugins count'), str(len(role.plugins)))
+        basic_table.add_row(T('Features count'), str(len(role.features)))
         
         ctx.console.print(basic_table)
         
@@ -106,6 +107,19 @@ class RoleCommand(ParserCommand):
                 t.add(Syntax(json.dumps(plugin_config, ensure_ascii=False, indent=2), "json", word_wrap=True))
 
             ctx.console.print(tree)
+
+        # 功能开关表格
+        if role.features:
+            feature_table = Table(title=T('Features'), show_lines=True)
+            feature_table.add_column(T('Feature name'), style="bold blue", justify="left")
+            feature_table.add_column(T('Status'), style="bold white", justify="center")
+
+            for feature_name, enabled in sorted(role.features.items()):
+                status_text = T('Enabled') if enabled else T('Disabled')
+                status = f"[bold green]✓ {status_text}[/bold green]" if enabled else f"[bold red]✗ {status_text}[/bold red]"
+                feature_table.add_row(feature_name, status)
+
+            ctx.console.print(feature_table)
         
     def cmd_use(self, args, ctx):
         success = ctx.tm.use(role=args.role)
