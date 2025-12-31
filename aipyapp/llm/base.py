@@ -94,6 +94,7 @@ class AIMessage(Message):
                 tc.model_dump() if hasattr(tc, 'model_dump') else tc.dict() if hasattr(tc, 'dict') else tc
                 for tc in self.tool_calls
             ]
+        d['reasoning_content'] = self.reason
         return d
 
 class ErrorMessage(Message):
