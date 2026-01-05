@@ -23,7 +23,7 @@ from ..llm import SystemMessage, UserMessage
 from .runtime import CliPythonRuntime
 from .utils import safe_rename, validate_file
 from .events import TypedEventBus, BaseEvent
-from .multimodal import MMContent   
+from .multimodal import MMContent
 from .context import ContextManager, ContextData
 from .toolcalls import ToolCallProcessor, get_internal_tools_openai_format
 from .chat import MessageStorage, ChatMessage
@@ -44,30 +44,39 @@ TASK_VERSION = 20251212
 CONSOLE_WHITE_HTML = read_text(__respkg__, "console_white.html")
 CONSOLE_CODE_HTML = read_text(__respkg__, "console_code.html")
 
+
 def with_task_context(func):
     @wraps(func)
     def wrapper(self, *args, **kwargs):
         with logger.contextualize(task_id=self.task_id):
             return func(self, *args, **kwargs)
+
     return wrapper
+
 
 class TaskError(Exception):
     """Task 异常"""
+
     pass
+
 
 class TaskInputError(TaskError):
     """Task 输入异常"""
+
     def __init__(self, message: str, original_error: Exception = None):
         self.message = message
         self.original_error = original_error
         super().__init__(self.message)
 
+
 class TaskStateError(TaskError):
     """Task 状态异常"""
+
     def __init__(self, message: str, **kwargs):
         self.message = message
         self.data = kwargs
         super().__init__(self.message)
+
 
 class TaskData(BaseModel):
     id: str = Field(default_factory=lambda: uuid.uuid4().hex)
@@ -118,6 +127,7 @@ class TaskData(BaseModel):
     def add_step(self, step: StepData):
         self.steps.append(step)
 
+
 class Task(Stoppable):
     def __init__(self, manager: TaskManager, data: TaskData | None = None, parent: Task | None = None, inherit_context: bool = False):
         super().__init__()
@@ -131,7 +141,7 @@ class Task(Stoppable):
         self.task_id = data.id
         self.manager = manager
         self.settings = manager.settings
-        
+
         if not parent:
             self.cwd = manager.cwd / self.task_id
             self.shared_dir = self.cwd / "shared"
@@ -145,7 +155,7 @@ class Task(Stoppable):
         self._saved = False
         self.max_rounds = manager.settings.get('max_rounds', MAX_ROUNDS)
         self.role = manager.role_manager.current_role
-        
+
         # Phase 2: Initialize data objects (minimal dependencies)
         self.blocks = data.blocks
         # 如果指定继承上下文且有父任务，则继承父任务的上下文数据
@@ -162,17 +172,12 @@ class Task(Stoppable):
             self.session = parent.session
         else:
             self.session = data.session
-        
+
         # Phase 3: Initialize managers and processors (depend on Phase 2)
-        
-        self.context_manager = ContextManager(
-            self.message_storage,
-            self.context,
-            manager.settings.get('context_manager'),
-            task_id=self.task_id
-        )
+
+        self.context_manager = ContextManager(self.message_storage, self.context, manager.settings.get('context_manager'), task_id=self.task_id)
         self.tool_call_processor = ToolCallProcessor(self)
-        
+
         # Phase 5: Initialize execution components (depend on task)
         self.mcp = manager.mcp
         self.features = PromptFeatures(self.role.get_features())
@@ -193,18 +198,18 @@ class Task(Stoppable):
         self.runner = BlockExecutor(task_id=self.task_id)
         self.runner.set_python_runtime(self.runtime)
         self.client = Client(self)
-        
+
         # Phase 6: (Cleaners are now initialized in Step class)
-        
+
         # Phase 7: Initialize plugins (depend on runtime and event_bus)
         self._initialize_plugins(manager)
-        
+
         # Phase 8: Initialize steps last (depend on almost everything)
         self.steps: List[Step] = [Step(self, step_data) for step_data in data.steps]
 
         # Subtasks list (runtime only, not serialized)
         self.subtasks: List['Task'] = []
-    
+
     @with_task_context
     def _initialize_plugins(self, manager: TaskManager):
         """Separate method to initialize plugins, improving clarity and testability"""
@@ -236,7 +241,7 @@ class Task(Stoppable):
     @property
     def depth(self) -> int:
         return self.data.depth
-    
+
     @property
     def instruction(self):
         return self.steps[0].data.instruction if self.steps else None
@@ -246,46 +251,39 @@ class Task(Stoppable):
         if self.steps:
             return self.steps[0].data.start_time
         return None
-    
+
     @property
     def tools(self):
         return self.data.tools
-    
+
     def set_feature(self, name: str, value: bool):
         self.features.set(name, value)
-    
+
     def has_feature(self, name: str) -> bool:
         return self.features.has(name)
-    
+
     def create_logger(self):
         task_logger = logger.bind(src='task', task_id=self.task_id)
-        task_logger.add(
-            self.cwd / "task.log", 
-            level="INFO",
-            format="{time:YYYY-MM-DD HH:mm:ss!UTC} | {level} | {message} | {extra}",
-            filter=lambda record: record["extra"].get("task_id") == self.task_id
-        )
+        task_logger.add(self.cwd / "task.log", level="INFO", format="{time:YYYY-MM-DD HH:mm:ss!UTC} | {level} | {message} | {extra}", filter=lambda record: record["extra"].get("task_id") == self.task_id)
         return task_logger
-    
+
     def get_logger(self, component: str, **kwargs):
         """为子组件提供绑定了 task_id 的 logger
-        
+
         Args:
             component: 组件名称，如 'Client', 'Runtime' 等
-            
+
         Returns:
             绑定了 task_id 的 logger 实例
         """
         return logger.bind(src=component, task_id=self.task_id, **kwargs)
-    
+
     def use(self, llm: str) -> bool:
-        """ for cmd_llm use
-        """
+        """for cmd_llm use"""
         return self.client.use(llm)
 
     def run_block(self, name: str) -> bool:
-        """ for cmd_block run
-        """
+        """for cmd_block run"""
         block = self.blocks.get(name)
         if not block:
             return False
@@ -310,63 +308,54 @@ class Task(Stoppable):
         system_prompt = self.prompts.get_default_prompt(**params)
         msg = SystemMessage(content=system_prompt)
         return self.message_storage.store(msg)
-    
+
     def new_step(self, step_data: StepData) -> Step:
-        """ 准备一个新的Step
-        """
+        """准备一个新的Step"""
         self.data.add_step(step_data)
         step = Step(self, step_data)
         self.steps.append(step)
         return step
-    
+
     def delete_step(self, index: int) -> bool:
         """删除指定索引的Step并清理其上下文消息"""
         if index < 0 or index >= len(self.steps):
             self.log.warning(f"Invalid step index: {index}")
             return False
-            
+
         if index == 0:
             self.log.warning("Cannot delete Step 0")
             return False
-            
+
         # 获取要删除的Step
         step_to_delete = self.steps[index]
         step_info = step_to_delete.data.instruction[:50] + "..." if len(step_to_delete.data.instruction) > 50 else step_to_delete.data.instruction
-        
+
         try:
             # 先清理上下文中的相关消息
             cleaned_count, remaining_messages, tokens_saved, tokens_remaining = step_to_delete.delete_cleanup()
-            
+
             # 然后从步骤列表中删除
             self.steps.pop(index)
-            
+
             self.log.info(f"Deleted step {index}: {step_info}")
             self.log.info(f"Context cleanup: {cleaned_count} messages deleted, {tokens_saved} tokens saved")
-            self.emit('step_deleted', 
-                     step_index=index, 
-                     step_info=step_info,
-                     cleaned_messages=cleaned_count,
-                     tokens_saved=tokens_saved)
-            
+            self.emit('step_deleted', step_index=index, step_info=step_info, cleaned_messages=cleaned_count, tokens_saved=tokens_saved)
+
             return True
-            
+
         except Exception as e:
             self.log.error(f"Failed to delete step {index}: {e}")
             return False
 
     def get_status(self):
-        return {
-            'llm': self.client.name,
-            'blocks': len(self.blocks),
-            'steps': len(self.steps),
-        }
+        return {'llm': self.client.name, 'blocks': len(self.blocks), 'steps': len(self.steps)}
 
     @classmethod
-    def from_file(cls, path: Union[str, Path], manager: TaskManager, parent: Task|None = None) -> 'Task':
+    def from_file(cls, path: Union[str, Path], manager: TaskManager, parent: Task | None = None) -> 'Task':
         """从文件创建 TaskState 对象"""
         path = Path(path)
         validate_file(path)
-        
+
         try:
             with open(path, 'r', encoding='utf-8') as f:
                 data = json.loads(f.read())
@@ -399,7 +388,7 @@ class Task(Stoppable):
             raise TaskError(f'Invalid task state: {e.errors()}') from e
         except Exception as e:
             raise TaskError(f'Failed to load task state: {e}') from e
-    
+
     def to_file(self, path: Union[str, Path]) -> None:
         """保存任务状态到文件"""
         path = Path(path)
@@ -412,7 +401,7 @@ class Task(Stoppable):
         except Exception as e:
             self.log.exception('Failed to save task state', path=str(path))
             raise TaskError(f'Failed to save task state: {e}') from e
-        
+
     def _auto_save(self):
         """自动保存任务状态"""
         # 如果任务目录不存在，则不保存
@@ -420,13 +409,13 @@ class Task(Stoppable):
         if not cwd.exists():
             self.log.warning('Task directory not found, skipping save')
             return
-        
+
         try:
             display = self.display
             if display:
                 filename = cwd / "console.html"
                 display.save(filename, clear=False, code_format=CONSOLE_WHITE_HTML)
-            
+
             self.to_file(cwd / "task.json")
             self._saved = True
             self.log.info('Task auto saved')
@@ -463,7 +452,7 @@ class Task(Stoppable):
         self.log.info('Task done', path=newname)
         self.emit('task_completed', path=str(newname), task_id=self.task_id, parent_id=self.parent.task_id if self.parent else None)
 
-    def prepare_user_prompt(self, instruction: str, first_run: bool=False) -> ChatMessage:
+    def prepare_user_prompt(self, instruction: str, first_run: bool = False) -> ChatMessage:
         """处理多模态内容并验证模型能力"""
         mmc = MMContent(instruction, base_path=self.cwd.parent)
         try:
@@ -484,23 +473,19 @@ class Task(Stoppable):
         return self.message_storage.store(message)
 
     def _auto_compact(self):
-       # Step级别的上下文清理
+        # Step级别的上下文清理
         auto_compact_enabled = self.settings.get('auto_compact_enabled', True)
         if not auto_compact_enabled:
             return
-        
+
         result = self.steps[-1].compact()
         self.log.info(f"Step compact result: {result}")
         cleaned_count, remaining_messages, tokens_saved, tokens_remaining = result
-        
+
         if cleaned_count == 0:
             return
-        
-        self.emit('step_cleanup_completed', 
-                    cleaned_messages=cleaned_count,
-                    remaining_messages=remaining_messages,
-                    tokens_saved=tokens_saved,
-                    tokens_remaining=tokens_remaining)
+
+        self.emit('step_cleanup_completed', cleaned_messages=cleaned_count, remaining_messages=remaining_messages, tokens_saved=tokens_saved, tokens_remaining=tokens_remaining)
         self.log.info(f"Step compact completed: {cleaned_count} messages cleaned")
 
     @with_task_context
@@ -527,11 +512,7 @@ class Task(Stoppable):
         os.chdir(self.cwd)
         self._saved = False
 
-        step_data =StepData(
-            initial_instruction=user_message,
-            instruction=instruction, 
-            title=title
-        )
+        step_data = StepData(initial_instruction=user_message, instruction=instruction, title=title)
         step = self.new_step(step_data)
         self.emit('step_started', instruction=instruction, step=len(self.steps) + 1, title=title)
         response = step.run()
@@ -584,11 +565,7 @@ class Task(Stoppable):
 
             # 2. 检查上下文是否足够大，值得压缩
             if len(self.context_manager.messages) < 4:
-                return {
-                    'success': False,
-                    'error': 'Context too small to compress effectively',
-                    'stats_before': stats_before
-                }
+                return {'success': False, 'error': 'Context too small to compress effectively', 'stats_before': stats_before}
 
             # 3. 使用prompts.py获取compact模板
             try:
@@ -611,20 +588,11 @@ class Task(Stoppable):
                 )
 
             # 5. 创建继承上下文的subtask进行摘要生成，支持指定客户端
-            response = self.run_subtask(
-                summary_instruction,
-                title="Context Summarization",
-                inherit_context=True,
-                client_name=client_name
-            )
+            response = self.run_subtask(summary_instruction, title="Context Summarization", inherit_context=True, client_name=client_name)
 
             # 获取生成的摘要内容
-            if not response or not response.message or not response.message.content:
-                return {
-                    'success': False,
-                    'error': 'Failed to generate summary content',
-                    'stats_before': stats_before
-                }
+            if response is None or not response.message or not response.message.content:
+                return {'success': False, 'error': 'Failed to generate summary content', 'stats_before': stats_before}
 
             summary_content = response.message.content.strip()
 
@@ -639,18 +607,11 @@ class Task(Stoppable):
             new_messages.extend(system_msgs)
 
             # 添加摘要用户消息
-            summary_user_msg = UserMessage(content=(
-                f"CONTEXT SUMMARY:\n{summary_content}\n\n"
-                f"This is a compressed summary of the previous conversation. "
-                f"Please continue the work based on this summarized context."
-            ))
+            summary_user_msg = UserMessage(content=(f"CONTEXT SUMMARY:\n{summary_content}\n\nThis is a compressed summary of the previous conversation. Please continue the work based on this summarized context."))
             new_messages.append(self.message_storage.store(summary_user_msg))
 
             # 添加AI确认消息
-            summary_ai_msg = AIMessage(content=(
-                "I understand the context summary. I'll continue the work based on this compressed information. "
-                "Feel free to ask me to elaborate on any specific aspect if needed."
-            ))
+            summary_ai_msg = AIMessage(content=("I understand the context summary. I'll continue the work based on this compressed information. Feel free to ask me to elaborate on any specific aspect if needed."))
             new_messages.append(self.message_storage.store(summary_ai_msg))
 
             # 9. 重建上下文
@@ -664,24 +625,10 @@ class Task(Stoppable):
             tokens_saved = stats_before['total_tokens'] - stats_after['total_tokens']
             compression_ratio = (tokens_saved / stats_before['total_tokens']) if stats_before['total_tokens'] > 0 else 0
 
-            self.log.info(f"Context compressed: {stats_before['message_count']}→{stats_after['message_count']} messages, "
-                       f"{stats_before['total_tokens']}→{stats_after['total_tokens']} tokens, "
-                       f"saved {tokens_saved} tokens ({compression_ratio:.1%} reduction)")
+            self.log.info(f"Context compressed: {stats_before['message_count']}→{stats_after['message_count']} messages, {stats_before['total_tokens']}→{stats_after['total_tokens']} tokens, saved {tokens_saved} tokens ({compression_ratio:.1%} reduction)")
 
-            return {
-                'success': True,
-                'stats_before': stats_before,
-                'stats_after': stats_after,
-                'summary_tokens': summary_tokens,
-                'messages_saved': messages_saved,
-                'tokens_saved': tokens_saved,
-                'compression_ratio': compression_ratio
-            }
+            return {'success': True, 'stats_before': stats_before, 'stats_after': stats_after, 'summary_tokens': summary_tokens, 'messages_saved': messages_saved, 'tokens_saved': tokens_saved, 'compression_ratio': compression_ratio}
 
         except Exception as e:
             self.log.error(f"Context compression failed: {e}")
-            return {
-                'success': False,
-                'error': str(e),
-                'stats_before': stats_before if 'stats_before' in locals() else None
-            }
+            return {'success': False, 'error': str(e), 'stats_before': stats_before if 'stats_before' in locals() else None}

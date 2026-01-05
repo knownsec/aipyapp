@@ -18,16 +18,20 @@ import openai
 from pydantic import BaseModel, Field
 from .config import ClientConfig
 
+
 class TextItem(BaseModel):
     type: Literal['text'] = 'text'
     text: str
 
+
 class ImageUrl(BaseModel):
     url: str
+
 
 class ImageItem(BaseModel):
     type: Literal['image-url'] = 'image-url'
     image_url: ImageUrl
+
 
 class MessageRole(str, Enum):
     SYSTEM = "system"
@@ -36,6 +40,7 @@ class MessageRole(str, Enum):
     TOOL = "tool"
     ERROR = "error"
 
+
 class Message(BaseModel):
     role: MessageRole
     content: str | None
@@ -43,7 +48,7 @@ class Message(BaseModel):
 
     def dict(self):
         return {'role': self.role.value, 'content': self.content}
-    
+
     @property
     def mid(self):
         if self._mid_cache is None:
@@ -51,11 +56,11 @@ class Message(BaseModel):
             self._mid_cache = base64.urlsafe_b64encode(hash_bytes[:8]).decode('utf-8').rstrip('=')
         return self._mid_cache
 
+
 class UserMessage(Message):
     role: Literal[MessageRole.USER] = MessageRole.USER
     content: Union[str, List[Union[TextItem, ImageItem]]]
-    
-    
+
     @property
     def content_str(self):
         if isinstance(self.content, str):
@@ -68,8 +73,10 @@ class UserMessage(Message):
                 contents.append(item.image_url.url)
         return '\n'.join(contents)
 
+
 class SystemMessage(Message):
     role: Literal[MessageRole.SYSTEM] = MessageRole.SYSTEM
+
 
 class ToolMessage(Message):
     role: Literal[MessageRole.TOOL] = MessageRole.TOOL
@@ -77,6 +84,7 @@ class ToolMessage(Message):
 
     def dict(self):
         return {'role': self.role.value, 'content': self.content, 'tool_call_id': self.tool_call_id}
+
 
 class AIMessage(Message):
     role: Literal[MessageRole.ASSISTANT] = MessageRole.ASSISTANT
@@ -87,19 +95,18 @@ class AIMessage(Message):
 
     def dict(self):
         d = {'role': self.role.value, 'content': self.content}
-        #if self.finish_reason:
+        # if self.finish_reason:
         #    d['finish_reason'] = self.finish_reason # 这会导致Mistral报错
         if self.tool_calls:
-            d['tool_calls'] = [
-                tc.model_dump() if hasattr(tc, 'model_dump') else tc.dict() if hasattr(tc, 'dict') else tc
-                for tc in self.tool_calls
-            ]
-        d['reasoning_content'] = self.reason
+            d['tool_calls'] = [tc.model_dump() if hasattr(tc, 'model_dump') else tc.dict() if hasattr(tc, 'dict') else tc for tc in self.tool_calls]
+        # d['reasoning_content'] = self.reason
         return d
+
 
 class ErrorMessage(Message):
     role: Literal[MessageRole.ERROR] = MessageRole.ERROR
     status_code: int | None = None
+
 
 @dataclass
 class RetryConfig:
@@ -113,6 +120,7 @@ class RetryConfig:
         delay = self.backoff_base * (self.backoff_factor ** (attempt - 1))
         delay += random.uniform(0, self.jitter)
         return delay
+
 
 class BaseClient(ABC):
     MODEL = None
@@ -141,7 +149,7 @@ class BaseClient(ABC):
     @property
     def max_tokens(self) -> int | None:
         return self.config.max_tokens
-    
+
     def get_api_params(self, **kwargs) -> dict:
         """
         生成 API 调用参数
@@ -164,20 +172,20 @@ class BaseClient(ABC):
 
     def __repr__(self):
         return f"{self.name}/{self.config.type}:{self.model}"
-    
+
     def usable(self):
         return self.model
-    
+
     def _get_client(self):
         return self._client
-    
+
     @abstractmethod
     def get_completion(self, messages: list[Dict[str, Any]], **kwargs) -> AIMessage:
         pass
-        
+
     def _prepare_messages(self, messages: list[Dict[str, Any]]) -> list[Dict[str, Any]]:
         return messages
-    
+
     @abstractmethod
     def _parse_usage(self, response) -> Counter:
         pass
@@ -189,13 +197,8 @@ class BaseClient(ABC):
     @abstractmethod
     def _parse_response(self, response) -> AIMessage:
         pass
-    
-    def __call__(
-        self,
-        messages: list[Dict[str, Any]],
-        stream_processor=None,
-        **kwargs,
-    ) -> AIMessage | ErrorMessage:
+
+    def __call__(self, messages: list[Dict[str, Any]], stream_processor=None, **kwargs) -> AIMessage | ErrorMessage:
         messages = self._prepare_messages(messages)
         start = time.time()
         attempt = 0
@@ -208,39 +211,19 @@ class BaseClient(ABC):
                 else:
                     msg = self._parse_response(response)
                 break
-            except (
-                httpx.RemoteProtocolError,
-                httpx.ReadTimeout,
-                httpx.ConnectTimeout,
-                httpx.HTTPStatusError,
-                httpx.ConnectError,
-                openai.APIConnectionError,
-                openai.APITimeoutError,
-            ) as e:
+            except (httpx.RemoteProtocolError, httpx.ReadTimeout, httpx.ConnectTimeout, httpx.HTTPStatusError, httpx.ConnectError, openai.APIConnectionError, openai.APITimeoutError) as e:
                 delay = self._retry.backoff(attempt)
                 self._log_retry(attempt, e, delay)
                 time.sleep(delay)
                 if attempt >= self._retry.max_attempts:
-                    self.log.exception(
-                        f"{self.name} API call failed after {attempt} attempt(s)",
-                        e=e,
-                    )
+                    self.log.exception(f"{self.name} API call failed after {attempt} attempt(s)", e=e)
                     return ErrorMessage(content=f"{e} (attempts={attempt})")
 
             except openai.APIStatusError as e:
-                self.log.exception(
-                    f"{self.name} API call failed with status code {e.status_code}",
-                    e=e,
-                )
+                self.log.exception(f"{self.name} API call failed with status code {e.status_code}", e=e)
                 return ErrorMessage(content=e.response.text, status_code=e.status_code)
             except Exception as e:
-                self.log.exception(
-                    (
-                        f"{self.name} API call encountered non-retryable "
-                        f"error on attempt {attempt}"
-                    ),
-                    e=e,
-                )
+                self.log.exception((f"{self.name} API call encountered non-retryable error on attempt {attempt}"), e=e)
                 return ErrorMessage(content=f"{e} (attempts={attempt})")
 
         msg.usage['time'] = int(time.time() - start)
@@ -251,10 +234,7 @@ class BaseClient(ABC):
 
     def _log_retry(self, attempt: int, e: Exception, delay: float) -> None:
         """Log retry info to logger and print to terminal."""
-        msg = (
-            f"{self.name} API error attempt {attempt}/{self._retry.max_attempts}, "
-            f"retrying in {delay:.2f}s: {e}"
-        )
+        msg = f"{self.name} API error attempt {attempt}/{self._retry.max_attempts}, retrying in {delay:.2f}s: {e}"
         self.log.warning(msg)
         try:
             print(msg, flush=True)
