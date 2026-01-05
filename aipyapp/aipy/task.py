@@ -82,13 +82,13 @@ class TaskData(BaseModel):
     id: str = Field(default_factory=lambda: uuid.uuid4().hex)
     version: int = Field(default=TASK_VERSION, frozen=True)
     depth: int = Field(default=0)
-    tools: List[Dict[str, Any]] = Field(default_factory=list)
     steps: List[StepData] = Field(default_factory=list)
     blocks: CodeBlocks = Field(default_factory=CodeBlocks)
     context: ContextData = Field(default_factory=ContextData)
     message_storage: MessageStorage = Field(default_factory=MessageStorage)
     events: List[BaseEvent.get_subclasses_union()] = Field(default_factory=list)
     session: Dict[str, Any] = Field(default_factory=dict, exclude=True)
+    tools: List[Dict[str, Any]] = Field(default_factory=list)
 
     @field_serializer('events')
     def serialize_events(self, events: List, _info):
