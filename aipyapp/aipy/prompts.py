@@ -10,17 +10,20 @@ import shutil
 from datetime import datetime
 from typing import List, TYPE_CHECKING, Dict, Optional
 
+from loguru import logger
 from jinja2 import Environment, FileSystemLoader
 
 from .. import __respath__
 from .toolcalls import ToolCallResult
 from .features import PromptFeatures
+from .config import CONFIG_DIR
 
 if TYPE_CHECKING:
     from .task import Task
 
 # 类级别缓存，避免重复的命令查找
 _command_cache: Dict[str, Optional[str]] = {}
+
 
 def check_commands(commands) -> Dict[str, Optional[str]]:
     """
@@ -43,20 +46,41 @@ def check_commands(commands) -> Dict[str, Optional[str]]:
 
     return result
 
-class Prompts:
 
+_agents_md = {"filenames": ['aipy.md', 'AGENTS.md', 'Agents.md', 'agents.md'], "path": CONFIG_DIR, "content": None}
+
+
+def load_agents_md():
+    """
+    加载 agents.md 文件内容
+    """
+    if _agents_md["content"] is not None:
+        return _agents_md["content"]
+
+    content = ""
+    for filename in _agents_md["filenames"]:
+        path = _agents_md["path"] / filename
+        if path.exists():
+            logger.info(f"Loading agents.md from {path}")
+            content = path.read_text(encoding="utf-8", errors="ignore")
+            break
+    _agents_md["content"] = content
+    return content
+
+
+class Prompts:
     def __init__(self, template_dir: str = None, features: Optional[PromptFeatures] = None):
         if not template_dir:
             template_dir = __respath__ / 'prompts'
         self.template_dir = os.path.abspath(template_dir)
 
         self.env = Environment(
-                    trim_blocks=True,
-                    lstrip_blocks=True,
-                    loader=FileSystemLoader(self.template_dir),
-                    auto_reload=True,  # 自动检测模板文件变化并清理缓存
-                    #autoescape=select_autoescape(['j2'])
-                )
+            trim_blocks=True,
+            lstrip_blocks=True,
+            loader=FileSystemLoader(self.template_dir),
+            auto_reload=True,  # 自动检测模板文件变化并清理缓存
+            # autoescape=select_autoescape(['j2'])
+        )
 
         # 为每个实例创建独立的 features（避免不同实例间的状态污染）
         self.features = features or PromptFeatures()
@@ -67,7 +91,7 @@ class Prompts:
     def has_feature(self, feature_name: str) -> bool:
         """检查是否启用指定功能"""
         return self.features.has(feature_name)
-    
+
     def enable_feature(self, feature_name: str):
         """启用指定功能"""
         self.features.enable(feature_name)
@@ -82,8 +106,8 @@ class Prompts:
         commands_to_check = {
             "node": ["--version"],
             "bash": ["--version"],
-            #"powershell": ["-Command", "$PSVersionTable.PSVersion.ToString()"],
-            "osascript": ["-e", 'return "AppleScript OK"']
+            # "powershell": ["-Command", "$PSVersionTable.PSVersion.ToString()"],
+            "osascript": ["-e", 'return "AppleScript OK"'],
         }
         self.env.globals['commands'] = check_commands(commands_to_check)
 
@@ -115,23 +139,14 @@ class Prompts:
             else:
                 search_paths = [self.template_dir]
 
-            error_msg = (
-                f"Prompt template not found: {template_name}\n"
-                f"Searched in directories: {search_paths}\n"
-                f"Working directory: {os.getcwd()}\n"
-                f"Original error: {type(e).__name__}: {e}"
-            )
+            error_msg = f"Prompt template not found: {template_name}\nSearched in directories: {search_paths}\nWorking directory: {os.getcwd()}\nOriginal error: {type(e).__name__}: {e}"
             raise FileNotFoundError(error_msg) from e
 
         try:
             return template.render(**kwargs)
         except Exception as e:
             # 模板渲染错误的详细信息
-            error_msg = (
-                f"Template rendering failed for: {template_name}\n"
-                f"Template variables: {list(kwargs.keys())}\n"
-                f"Original error: {type(e).__name__}: {e}"
-            )
+            error_msg = f"Template rendering failed for: {template_name}\nTemplate variables: {list(kwargs.keys())}\nOriginal error: {type(e).__name__}: {e}"
             raise RuntimeError(error_msg) from e
 
     def get_default_prompt(self, **kwargs) -> str:
@@ -141,7 +156,8 @@ class Prompts:
         :param kwargs: 用户传入的模板变量
         :return: 渲染后的字符串
         """
-        return self.get_prompt('default', **kwargs)
+        agents_md = load_agents_md()
+        return self.get_prompt('default', agents_md=agents_md, **kwargs)
 
     def get_task_prompt(self, task: Task, instruction: str) -> str:
         """
@@ -155,7 +171,7 @@ class Prompts:
             contexts['TERM'] = os.environ.get('TERM', 'unknown')
         constraints = {"lang": task.lang}
         return self.get_prompt('task', instruction=instruction, contexts=contexts, constraints=constraints, gui=task.gui, parent=task.parent, task_id=task.task_id)
-    
+
     def get_toolcall_results_prompt(self, results: List[ToolCallResult]) -> str:
         """
         获取混合结果提示（包含执行和编辑结果）
@@ -163,7 +179,7 @@ class Prompts:
         :return: 渲染后的字符串
         """
         return self.get_prompt('toolcall_results', results=results)
-    
+
     def get_chat_prompt(self, instruction: str, task: str) -> str:
         """
         获取聊天提示
@@ -172,7 +188,7 @@ class Prompts:
         :return: 渲染后的字符串
         """
         return self.get_prompt('chat', instruction=instruction, initial_task=task)
-    
+
     def get_parse_error_prompt(self, errors: list) -> str:
         """
         获取消息解析错误提示
