@@ -9,8 +9,10 @@ from types import CodeType
 from loguru import logger
 from pydantic import BaseModel, Field, ConfigDict, field_serializer, field_validator
 
+
 class CodeBlock(BaseModel):
     """Code block"""
+
     model_config = ConfigDict(arbitrary_types_allowed=True)
     name: str = Field(title="Block name", min_length=1, strip_whitespace=True)
     lang: str = Field(title="Block language", min_length=1, strip_whitespace=True)
@@ -33,8 +35,7 @@ class CodeBlock(BaseModel):
         if not v:
             return None
         if isinstance(v, dict):
-            return {k: set(value) if isinstance(value, list) else value
-                    for k, value in v.items()}
+            return {k: set(value) if isinstance(value, list) else value for k, value in v.items()}
         return v
 
     def add_dep(self, dep_name: str, dep_value: Any):
@@ -57,7 +58,7 @@ class CodeBlock(BaseModel):
         """保存代码块到文件"""
         if not self.path:
             return False
-            
+
         try:
             path = Path(self.path)
             path.parent.mkdir(parents=True, exist_ok=True)
@@ -72,7 +73,7 @@ class CodeBlock(BaseModel):
         if self.path:
             return Path(self.path).absolute()
         return None
-    
+
     def get_lang(self):
         lang = self.lang.lower()
         return lang
@@ -80,8 +81,10 @@ class CodeBlock(BaseModel):
     def __str__(self):
         return f"<CodeBlock name={self.name}, version={self.version}, lang={self.lang}, path={self.path}>"
 
+
 class CodeBlocks(BaseModel):
     """代码块集合"""
+
     history: List[CodeBlock] = Field(default_factory=list)
     blocks: Dict[str, CodeBlock] = Field(default_factory=OrderedDict, exclude=True)
 
@@ -101,15 +104,23 @@ class CodeBlocks(BaseModel):
 
     def __iter__(self):
         return iter(self.blocks.values())
-    
+
     def add_block(self, block: CodeBlock, validate: bool = True):
         """添加代码块"""
+        # 处理 block.path
+        if not block.path:
+            # 没有指定 path，使用 name.lang 作为文件名
+            block.path = f"blocks/{block.name}.{block.lang}"
+        elif Path(block.path).parent == Path('.'):
+            # path 没有包含目录，添加 blocks/ 前缀
+            block.path = f"blocks/{block.path}"
+
         if validate:
             old_block = self.blocks.get(block.name)
             if old_block:
                 block.version = old_block.version + 1
                 self._log.info(f"Update block {block.name} version to {block.version}")
-            
+
         self.blocks[block.name] = block
         self.history.append(block)
         block.save()
