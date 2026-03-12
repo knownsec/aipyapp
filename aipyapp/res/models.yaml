@@ -213,6 +213,27 @@ Anthropic:
       cached: 0.30
       output: 15.00
 
+MiniMax:
+  MiniMax-M2.5:
+    description: MiniMax flagship model with strong text generation and function calling capabilities
+    capabilities: [TEXT, FUNCTION_CALLING]
+    context_length: 204800
+    max_output_tokens: 8192
+    prices:
+      input: 0.3
+      cached: 0.03
+      output: 1.2
+
+  MiniMax-M2.5-highspeed:
+    description: High-speed variant of MiniMax M2.5 with faster inference
+    capabilities: [TEXT, FUNCTION_CALLING]
+    context_length: 204800
+    max_output_tokens: 8192
+    prices:
+      input: 0.6
+      cached: 0.03
+      output: 2.4
+
 MoonShot:
   kimi-latest:
     description: the latest version of the Kimi large model

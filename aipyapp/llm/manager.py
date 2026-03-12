@@ -99,6 +99,11 @@ class MistralClient(OpenAIBaseClient):
     MODEL = 'devstral-2512'
 
 
+class MiniMaxClient(OpenAIBaseClient):
+    BASE_URL = 'https://api.minimax.io/v1'
+    MODEL = 'MiniMax-M2.5'
+
+
 CLIENTS = {
     "openai": OpenAIClient,
     "openaiv2": OpenAIClientV2,
@@ -115,6 +120,7 @@ CLIENTS = {
     'bigmodel': BigModelClient,
     'z': ZClient,
     'mistral': MistralClient,
+    'minimax': MiniMaxClient,
 }
 
 
