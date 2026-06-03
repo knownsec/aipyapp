@@ -213,6 +213,37 @@ Anthropic:
       cached: 0.30
       output: 15.00
 
+MiniMax:
+  MiniMax-M3:
+    description: MiniMax flagship model with 512K context, 128K max output, image input, and reasoning support
+    capabilities: [TEXT, IMAGE_INPUT, FUNCTION_CALLING, REASONING]
+    context_length: 524288
+    max_output_tokens: 131072
+    prices:
+      input: 0.6
+      cached: 0.12
+      output: 2.4
+
+  MiniMax-M2.7:
+    description: Previous-generation MiniMax model with enhanced reasoning, text generation and function calling
+    capabilities: [TEXT, FUNCTION_CALLING, REASONING]
+    context_length: 204800
+    max_output_tokens: 8192
+    prices:
+      input: 0.3
+      cached: 0.03
+      output: 1.2
+
+  MiniMax-M2.7-highspeed:
+    description: High-speed variant of MiniMax M2.7 with faster inference
+    capabilities: [TEXT, FUNCTION_CALLING, REASONING]
+    context_length: 204800
+    max_output_tokens: 8192
+    prices:
+      input: 0.6
+      cached: 0.03
+      output: 2.4
+
 MoonShot:
   kimi-latest:
     description: the latest version of the Kimi large model

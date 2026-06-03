@@ -37,6 +37,11 @@ PROVIDERS = {
         "models_endpoint": "/models",
         "type": "gemini"
     },
+    "MiniMax": {
+        "api_base": "https://api.minimax.io/v1",
+        "models_endpoint": "/models",
+        "type": "minimax"
+    },
     "OAuth2": {
         "type": "oauth2"
     }
