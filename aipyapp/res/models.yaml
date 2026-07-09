@@ -213,6 +213,17 @@ Anthropic:
       cached: 0.30
       output: 15.00
 
+MiniMax:
+  MiniMax-M3:
+    description: MiniMax's flagship text model with long context and adaptive thinking
+    capabilities: [TEXT, FUNCTION_CALLING, STRUCTURED_OUTPUT, REASONING]
+    url: https://platform.minimax.io/docs/api-reference/api-overview
+    context_length: 1000000
+    prices:
+      input: 0.60
+      cached: 0.12
+      output: 2.40
+
 MoonShot:
   kimi-latest:
     description: the latest version of the Kimi large model

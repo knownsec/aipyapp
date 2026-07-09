@@ -688,7 +688,7 @@ class ProviderConfigWizard(wx.adv.Wizard):
             if response.status_code == 200:
                 data = response.json()
                 self.log.info(f"获取模型列表成功: {data}")
-                if provider in ["OpenAI", "DeepSeek", "xAI", "Claude"]:
+                if provider in ["OpenAI", "DeepSeek", "MiniMax", "xAI", "Claude"]:
                     return [model["id"] for model in data["data"]]
                 elif provider == "Gemini":
                     return [model["name"] for model in data["models"]]

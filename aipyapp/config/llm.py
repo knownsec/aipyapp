@@ -17,6 +17,11 @@ PROVIDERS = {
         "models_endpoint": "/models",
         "type": "deepseek"
     },
+    "MiniMax": {
+        "api_base": "https://api.minimax.io/v1",
+        "models_endpoint": "/models",
+        "type": "openai"
+    },
     "xAI": {
         "api_base": "https://api.x.ai/v1",
         "models_endpoint": "/models",
