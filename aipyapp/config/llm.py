@@ -18,9 +18,14 @@ PROVIDERS = {
         "type": "deepseek"
     },
     "MiniMax": {
-        "api_base": "https://api.minimax.io/v1",
+        "api_base": T("https://api.minimax.io/v1"),
         "models_endpoint": "/models",
-        "type": "openai"
+        "type": "minimax"
+    },
+    "MiniMax (Anthropic)": {
+        "api_base": T("https://api.minimax.io/anthropic/v1"),
+        "models_endpoint": "/models",
+        "type": "minimax_anthropic"
     },
     "xAI": {
         "api_base": "https://api.x.ai/v1",
@@ -52,6 +57,8 @@ def get_providers():
         providers = OrderedDict()
         providers["Trustoken"] = PROVIDERS["Trustoken"]
         providers["DeepSeek"] = PROVIDERS["DeepSeek"]
+        providers["MiniMax"] = PROVIDERS["MiniMax"]
+        providers["MiniMax (Anthropic)"] = PROVIDERS["MiniMax (Anthropic)"]
         return providers
     else:
         return PROVIDERS

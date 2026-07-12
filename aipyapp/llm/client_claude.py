@@ -18,7 +18,13 @@ class ClaudeClient(BaseClient):
 
     def _get_client(self):
         import anthropic
-        return anthropic.Anthropic(api_key=self.config.api_key, timeout=self.config.timeout)
+        kwargs = {
+            "api_key": self.config.api_key,
+            "timeout": self.config.timeout,
+        }
+        if self.base_url:
+            kwargs["base_url"] = self.base_url
+        return anthropic.Anthropic(**kwargs)
 
     def usable(self):
         return super().usable() and self.config.api_key
@@ -86,4 +92,3 @@ class ClaudeClient(BaseClient):
             **api_params
         )
         return message
-    
