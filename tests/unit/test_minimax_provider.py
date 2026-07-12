@@ -63,14 +63,14 @@ def test_minimax_anthropic_client_passes_sdk_base_url(monkeypatch):
 
 @pytest.mark.unit
 @pytest.mark.parametrize(
-    ("provider", "expected_header"),
+    ("provider", "expected_header", "models_endpoint"),
     [
-        ("MiniMax", ("Authorization", "Bearer test-key")),
-        ("MiniMax (Anthropic)", ("x-api-key", "test-key")),
+        ("MiniMax", ("Authorization", "Bearer test-key"), "/models"),
+        ("MiniMax (Anthropic)", ("x-api-key", "test-key"), "/v1/models"),
     ],
 )
 def test_minimax_model_listing_uses_protocol_api_root(
-    monkeypatch, provider, expected_header
+    monkeypatch, provider, expected_header, models_endpoint
 ):
     response = Mock(status_code=200, text="ok")
     response.json.return_value = {
@@ -86,8 +86,17 @@ def test_minimax_model_listing_uses_protocol_api_root(
     request.assert_called_once()
     url = request.call_args.args[0]
     headers = request.call_args.kwargs["headers"]
-    assert url == f'{PROVIDERS[provider]["api_base"]}/models'
+    api_base = PROVIDERS[provider]["api_base"]
+    assert PROVIDERS[provider]["models_endpoint"] == models_endpoint
+    assert url == f"{api_base}{models_endpoint}"
     assert headers[expected_header[0]] == expected_header[1]
+
+    if provider == "MiniMax (Anthropic)":
+        assert api_base in {
+            "https://api.minimax.io/anthropic",
+            "https://api.minimaxi.com/anthropic",
+        }
+        assert url == f"{api_base}/v1/models"
 
 
 @pytest.mark.unit

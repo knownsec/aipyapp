@@ -23,8 +23,8 @@ PROVIDERS = {
         "type": "minimax"
     },
     "MiniMax (Anthropic)": {
-        "api_base": T("https://api.minimax.io/anthropic/v1"),
-        "models_endpoint": "/models",
+        "api_base": T("https://api.minimax.io/anthropic"),
+        "models_endpoint": "/v1/models",
         "type": "minimax_anthropic"
     },
     "xAI": {
