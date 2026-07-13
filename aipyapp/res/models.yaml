@@ -213,6 +213,51 @@ Anthropic:
       cached: 0.30
       output: 15.00
 
+MiniMax:
+  MiniMax-M3:
+    description: Latest M-series model for agentic reasoning, tool use, coding, and long-context tasks
+    capabilities: [TEXT, IMAGE_INPUT, VIDEO_INPUT, FUNCTION_CALLING, REASONING]
+    url: https://platform.minimax.io/docs/api-reference/api-overview
+    context_length: 1000000
+    thinking: [adaptive, disabled]
+    prices:
+      input: 0.30
+      cached: 0.06
+      output: 1.20
+    pricing_tiers:
+      - service_tier: standard
+        input_tokens_lte: 512000
+        input: 0.30
+        cached: 0.06
+        output: 1.20
+      - service_tier: standard
+        input_tokens_gt: 512000
+        input: 0.60
+        cached: 0.12
+        output: 2.40
+      - service_tier: priority
+        input_tokens_lte: 512000
+        input: 0.45
+        cached: 0.09
+        output: 1.80
+      - service_tier: priority
+        input_tokens_gt: 512000
+        input: 0.90
+        cached: 0.18
+        output: 3.60
+
+  MiniMax-M2.7:
+    description: Beginning the journey of recursive self-improvement
+    capabilities: [TEXT, FUNCTION_CALLING, REASONING]
+    url: https://platform.minimax.io/docs/api-reference/api-overview
+    context_length: 204800
+    thinking: [always_on]
+    prices:
+      input: 0.30
+      cached: 0.06
+      cache_write: 0.375
+      output: 1.20
+
 MoonShot:
   kimi-latest:
     description: the latest version of the Kimi large model
