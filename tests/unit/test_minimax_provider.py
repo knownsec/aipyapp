@@ -166,40 +166,12 @@ def test_minimax_model_registry_covers_target_models():
         ModelCapability.REASONING,
     }
     assert m3.extra["prices"] == {
-        "input": 0.30,
-        "cached": 0.06,
-        "output": 1.20,
+        "input": 0.60,
+        "cached": 0.12,
+        "cache_write": None,
+        "output": 2.40,
     }
-    assert m3.extra["pricing_tiers"] == [
-        {
-            "service_tier": "standard",
-            "input_tokens_lte": 512_000,
-            "input": 0.30,
-            "cached": 0.06,
-            "output": 1.20,
-        },
-        {
-            "service_tier": "standard",
-            "input_tokens_gt": 512_000,
-            "input": 0.60,
-            "cached": 0.12,
-            "output": 2.40,
-        },
-        {
-            "service_tier": "priority",
-            "input_tokens_lte": 512_000,
-            "input": 0.45,
-            "cached": 0.09,
-            "output": 1.80,
-        },
-        {
-            "service_tier": "priority",
-            "input_tokens_gt": 512_000,
-            "input": 0.90,
-            "cached": 0.18,
-            "output": 3.60,
-        },
-    ]
+    assert "pricing_tiers" not in m3.extra
     assert m3.extra["thinking"] == ["adaptive", "disabled"]
 
     assert m27.context_length == 204_800
