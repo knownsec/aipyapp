@@ -45,6 +45,22 @@ class DeepSeekClient(OpenAIBaseClient):
     #     return params
 
 
+class MiniMaxClient(OpenAIBaseClient):
+    MODEL = 'MiniMax-M3'
+
+    @property
+    def base_url(self):
+        return self.config.base_url or T('https://api.minimax.io/v1')
+
+
+class MiniMaxAnthropicClient(ClaudeClient):
+    MODEL = 'MiniMax-M3'
+
+    @property
+    def base_url(self):
+        return self.config.base_url or T('https://api.minimax.io/anthropic')
+
+
 class GrokClient(OpenAIBaseClient):
     BASE_URL = 'https://api.x.ai/v1/'
     MODEL = 'grok-4-1-fast-reasoning'
@@ -106,6 +122,8 @@ CLIENTS = {
     "claude": ClaudeClient,
     "gemini": GeminiClient,
     "deepseek": DeepSeekClient,
+    "minimax": MiniMaxClient,
+    "minimax_anthropic": MiniMaxAnthropicClient,
     'grok': GrokClient,
     'trust': TrustClient,
     'azure': AzureOpenAIClient,

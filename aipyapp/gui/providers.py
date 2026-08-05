@@ -673,7 +673,7 @@ class ProviderConfigWizard(wx.adv.Wizard):
             "Content-Type": "application/json"
         }
 
-        if provider == "Claude":
+        if provider_info["type"] in ("claude", "minimax_anthropic"):
             headers["x-api-key"] = api_key
             headers["anthropic-version"] = "2023-06-01"
         else:
@@ -688,7 +688,14 @@ class ProviderConfigWizard(wx.adv.Wizard):
             if response.status_code == 200:
                 data = response.json()
                 self.log.info(f"获取模型列表成功: {data}")
-                if provider in ["OpenAI", "DeepSeek", "xAI", "Claude"]:
+                if provider in [
+                    "OpenAI",
+                    "DeepSeek",
+                    "MiniMax",
+                    "MiniMax (Anthropic)",
+                    "xAI",
+                    "Claude",
+                ]:
                     return [model["id"] for model in data["data"]]
                 elif provider == "Gemini":
                     return [model["name"] for model in data["models"]]
