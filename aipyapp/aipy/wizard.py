@@ -5,12 +5,14 @@ import requests
 from loguru import logger
 
 from .. import T
-from ..config.llm import LLMConfig, PROVIDERS
+from ..config.llm import LLMConfig, PROVIDERS, minimax_model_choices
 from .trustoken import TrustToken
 
 def get_models(providers, provider, api_key: str) -> list:
     """获取可用的模型列表"""
     provider_info = providers[provider]
+    if provider_info["type"] in ("minimax", "minimax_anthropic"):
+        return minimax_model_choices()
     headers = {
         "Content-Type": "application/json"
     }
@@ -101,10 +103,16 @@ def config_llm(llm_config):
             logger.warning(T('Model list acquisition failed'))
             return None
 
+        selected_model = None
+        if provider["type"] in ("minimax", "minimax_anthropic"):
+            selected_model = llm_config.config.get(name, {}).get("model")
+            available_models = minimax_model_choices(selected_model)
+
         # 第三步：选择模型
         model = questionary.select(
             T('Available Models'),
-            choices=available_models
+            choices=available_models,
+            default=selected_model,
         ).unsafe_ask()
         config['model'] = model
 

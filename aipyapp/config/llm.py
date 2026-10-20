@@ -5,6 +5,17 @@ from collections import OrderedDict
 from .base import BaseConfig
 from .. import T, get_lang
 
+MINIMAX_MODELS = ("MiniMax-M3.1-Flash", "MiniMax-M3")
+
+
+def minimax_model_choices(selected_model=None):
+    """Offer current models while retaining an explicitly saved selection."""
+    models = list(MINIMAX_MODELS)
+    if selected_model and selected_model not in models:
+        models.append(selected_model)
+    return models
+
+
 PROVIDERS = {
     "Trustoken": {
         "api_base": T("https://sapi.trustoken.ai/v1"),
