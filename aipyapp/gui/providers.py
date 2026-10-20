@@ -13,6 +13,7 @@ from loguru import logger
 
 from ..aipy.trustoken import TrustTokenAPI
 from .. import T
+from ..config.llm import minimax_model_choices
 
 class InitialProviderPage(wx.adv.WizardPage):
     def __init__(self, parent, provider_config):
@@ -630,7 +631,12 @@ class ProviderConfigWizard(wx.adv.Wizard):
                 # 设置模型列表
                 selected_model = None
                 if provider in self.provider_config.config:
-                    selected_model = self.provider_config.config[provider].get("selected_model")
+                    saved = self.provider_config.config[provider]
+                    selected_model = saved.get("selected_model")
+                    provider_type = self.provider_config.providers[provider]["type"]
+                    if provider_type in ("minimax", "minimax_anthropic"):
+                        selected_model = saved.get("model") or selected_model
+                        models = minimax_model_choices(selected_model)
                 self.model_page.set_models(models, selected_model)
         elif event.GetPage() == self.trust_token_page:
             self.trust_token_page.prev_page = self.initial_page
@@ -669,11 +675,13 @@ class ProviderConfigWizard(wx.adv.Wizard):
 
     def get_models(self, provider: str, api_key: str) -> List[str]:
         provider_info = self.provider_config.providers[provider]
+        if provider_info["type"] in ("minimax", "minimax_anthropic"):
+            return minimax_model_choices()
         headers = {
             "Content-Type": "application/json"
         }
 
-        if provider == "Claude":
+        if provider_info["type"] in ("claude", "minimax_anthropic"):
             headers["x-api-key"] = api_key
             headers["anthropic-version"] = "2023-06-01"
         else:
@@ -688,7 +696,14 @@ class ProviderConfigWizard(wx.adv.Wizard):
             if response.status_code == 200:
                 data = response.json()
                 self.log.info(f"获取模型列表成功: {data}")
-                if provider in ["OpenAI", "DeepSeek", "xAI", "Claude"]:
+                if provider in [
+                    "OpenAI",
+                    "DeepSeek",
+                    "MiniMax",
+                    "MiniMax (Anthropic)",
+                    "xAI",
+                    "Claude",
+                ]:
                     return [model["id"] for model in data["data"]]
                 elif provider == "Gemini":
                     return [model["name"] for model in data["models"]]

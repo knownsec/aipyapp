@@ -170,6 +170,8 @@ After migration, these files will be backed up to {}, please check them.","发�
 "You can create a new directory in the file dialog","您可以在文件对话框中选择或创建新目录","ファイルダイアログで新しいディレクトリを選択または作成できます"
 "Settings","设置","設定"
 "https://sapi.trustoken.ai/v1","https://api.trustoken.cn/v1","https://sapi.trustoken.ai/v1"
+"https://api.minimax.io/v1","https://api.minimaxi.com/v1","https://api.minimax.io/v1"
+"https://api.minimax.io/anthropic","https://api.minimaxi.com/anthropic","https://api.minimax.io/anthropic"
 "https://www.trustoken.ai/api","https://www.trustoken.cn/api","https://www.trustoken.ai/api"
 "https://store.aipy.app/api/work","https://store.aipyaipy.com/api/work","https://store.aipy.app/api/work"
 "Work directory does not exist","工作目录不存在","作業ディレクトリが存在しません"

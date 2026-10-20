@@ -45,6 +45,48 @@ class DeepSeekClient(OpenAIBaseClient):
     #     return params
 
 
+class MiniMaxClient(OpenAIBaseClient):
+    MODEL = 'MiniMax-M3.1-Flash'
+
+    @property
+    def base_url(self):
+        return self.config.base_url or T('https://api.minimax.io/v1')
+
+
+class MiniMaxAnthropicClient(ClaudeClient):
+    MODEL = 'MiniMax-M3.1-Flash'
+
+    @property
+    def base_url(self):
+        return self.config.base_url or T('https://api.minimax.io/anthropic')
+
+    def get_api_params(self, **kwargs):
+        params = super().get_api_params(**kwargs)
+        params.update(self.config.extra_fields)
+        params.update(kwargs)
+        output_config = params.pop('output_config', None)
+        if output_config is not None:
+            # The pinned SDK predates output_config; serialize it as extra JSON.
+            params['extra_body'] = {
+                **(params.get('extra_body') or {}), 'output_config': output_config,
+            }
+        return params
+
+    def _parse_response(self, response):
+        from .base import AIMessage
+
+        content = ''.join(
+            block.text for block in response.content if block.type == 'text'
+        )
+        reason = ''.join(
+            block.thinking for block in response.content if block.type == 'thinking'
+        )
+        return AIMessage(
+            role=response.role, content=content, reason=reason or None,
+            usage=self._parse_usage(response),
+        )
+
+
 class GrokClient(OpenAIBaseClient):
     BASE_URL = 'https://api.x.ai/v1/'
     MODEL = 'grok-4-1-fast-reasoning'
@@ -106,6 +148,8 @@ CLIENTS = {
     "claude": ClaudeClient,
     "gemini": GeminiClient,
     "deepseek": DeepSeekClient,
+    "minimax": MiniMaxClient,
+    "minimax_anthropic": MiniMaxAnthropicClient,
     'grok': GrokClient,
     'trust': TrustClient,
     'azure': AzureOpenAIClient,
